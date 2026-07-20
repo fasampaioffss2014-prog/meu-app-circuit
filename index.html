@@ -4,9 +4,16 @@
 <head>
 
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Circuito Alimentador</title>
+
+
+<!-- Biblioteca OCR -->
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 
 <style>
 
@@ -19,43 +26,63 @@ max-width:650px;
 margin:auto;
 }
 
+
 .container{
+
 background:#1e1e1e;
 padding:20px;
 border-radius:10px;
 box-shadow:0 4px 10px #000;
+
 }
+
 
 h2{
+
 text-align:center;
 color:#a855f7;
+
 }
 
+
 #status{
+
 text-align:center;
 color:#a855f7;
 font-size:14px;
 min-height:25px;
+
 }
+
 
 .bloco-endereco{
+
 border-bottom:1px solid #333;
 padding:15px 0;
+
 }
 
+
 .grid{
+
 display:grid;
 grid-template-columns:1fr 1fr;
 gap:10px;
+
 }
 
+
 label{
+
 color:#a855f7;
 font-size:12px;
 font-weight:bold;
+
 }
 
+
 input{
+
 width:100%;
 box-sizing:border-box;
 margin-top:5px;
@@ -64,30 +91,31 @@ border-radius:6px;
 border:1px solid #444;
 background:#29292e;
 color:white;
-font-size:14px;
+
 }
 
-input:focus{
-border-color:#a855f7;
-outline:none;
-}
 
 .resultado{
+
 margin-top:12px;
 padding:12px;
 background:#151515;
 border:1px dashed #a855f7;
 border-radius:6px;
-font-size:14px;
+
 }
+
 
 .endereco{
+
 display:block;
 color:white;
-margin-top:5px;
+
 }
 
+
 .btn{
+
 width:100%;
 padding:12px;
 margin-top:12px;
@@ -95,26 +123,36 @@ border:none;
 border-radius:7px;
 font-size:16px;
 font-weight:bold;
-cursor:pointer;
+
 }
 
+
 .adicionar{
+
 background:#202024;
 color:#a855f7;
 border:1px solid #a855f7;
+
 }
+
 
 .exportar{
+
 background:#e1e1e6;
 color:#121212;
+
 }
 
+
 .excluir{
+
 background:#7f1d1d;
 color:white;
+
 }
 
 </style>
+
 
 </head>
 
@@ -124,60 +162,113 @@ color:white;
 
 <div class="container">
 
+
 <h2>
 Circuito Alimentador
 </h2>
 
 
 <div id="status">
-Digite os dados da entrega
+
+Digite ou fotografe a etiqueta
+
 </div>
+
+
+
+<button class="btn adicionar" id="lerEtiqueta">
+
+📷 Ler etiqueta
+
+</button>
+
+
+<input
+
+type="file"
+
+id="fotoEtiqueta"
+
+accept="image/*"
+
+capture="environment"
+
+style="display:none;">
+
 
 
 <div id="lista"></div>
 
 
+
 <button class="btn adicionar" id="adicionar">
+
 + Adicionar Linha
+
 </button>
 
 
+
 <button class="btn exportar" id="exportar">
+
 Baixar CSV Circuit
+
 </button>
 
 
 </div>
 
 
+
 <script>
 
+
 const lista =
+
 document.getElementById("lista");
 
+
 const btnAdicionar =
+
 document.getElementById("adicionar");
 
+
 const btnExportar =
+
 document.getElementById("exportar");
 
+
 const status =
+
 document.getElementById("status");
 
 
+const btnLerEtiqueta =
+
+document.getElementById("lerEtiqueta");
+
+
+const fotoEtiqueta =
+
+document.getElementById("fotoEtiqueta");
+    // Criar linha de entrega
 
 function criarLinha(){
 
 
 const bloco =
+
 document.createElement("div");
 
 
 bloco.className =
+
 "bloco-endereco";
 
 
+
 bloco.innerHTML = `
+
 
 <div class="grid">
 
@@ -187,7 +278,6 @@ bloco.innerHTML = `
 <label>Sequencia</label>
 
 <input 
-type="text"
 class="sequencia"
 readonly>
 
@@ -199,7 +289,6 @@ readonly>
 <label>CEP</label>
 
 <input
-type="text"
 class="cep"
 maxlength="9"
 placeholder="00000-000">
@@ -212,9 +301,8 @@ placeholder="00000-000">
 <label>Numero</label>
 
 <input
-type="text"
 class="numero"
-placeholder="Ex: 150">
+placeholder="Numero">
 
 </div>
 
@@ -224,7 +312,6 @@ placeholder="Ex: 150">
 <label>Complemento</label>
 
 <input
-type="text"
 class="complemento"
 placeholder="Casa bloco apto">
 
@@ -253,6 +340,7 @@ Remover linha
 
 </button>
 
+
 `;
 
 
@@ -262,57 +350,67 @@ lista.appendChild(bloco);
 
 
 const ordem =
+
 document.querySelectorAll(".bloco-endereco").length;
 
 
+
 bloco.querySelector(".sequencia").value =
+
 String(ordem).padStart(3,"0");
 
 
 
 const cep =
+
 bloco.querySelector(".cep");
 
+
 const numero =
+
 bloco.querySelector(".numero");
 
+
 const complemento =
+
 bloco.querySelector(".complemento");
 
+
 const excluir =
+
 bloco.querySelector(".excluir");
-    cep.addEventListener("input",()=>{
+
+
+
+cep.addEventListener("input",()=>{
+
 
 let valor =
+
 cep.value.replace(/\D/g,"");
 
 
-if(valor.length > 8){
+if(valor.length>8){
 
-valor =
-valor.substring(0,8);
+valor = valor.substring(0,8);
 
 }
 
 
-if(valor.length > 5){
+if(valor.length>5){
 
 cep.value =
-valor.substring(0,5)
-+
-"-"
-+
-valor.substring(5);
+
+valor.substring(0,5)+"-"+valor.substring(5);
 
 }else{
 
-cep.value =
-valor;
+cep.value = valor;
 
 }
 
 
-if(valor.length === 8){
+if(valor.length===8){
 
 buscarCEP(valor,bloco);
 
@@ -330,7 +428,6 @@ montarEndereco(bloco);
 });
 
 
-
 complemento.addEventListener("input",()=>{
 
 montarEndereco(bloco);
@@ -345,36 +442,190 @@ bloco.remove();
 
 renumerarSequencia();
 
-salvarDados();
-
 });
-
 
 }
 
 
-
-
 function renumerarSequencia(){
 
+
 document.querySelectorAll(".bloco-endereco")
+
 .forEach((bloco,index)=>{
+
 
 bloco.querySelector(".sequencia").value =
 
 String(index+1).padStart(3,"0");
 
+
 });
+
 
 }
 
 
 
+// Leitor de etiqueta
+
+btnLerEtiqueta.addEventListener(
+
+"click",
+
+()=>{
+
+
+fotoEtiqueta.click();
+
+
+});
+
+
+
+fotoEtiqueta.addEventListener(
+
+"change",
+
+()=>{
+
+
+const arquivo =
+
+fotoEtiqueta.files[0];
+
+
+
+if(!arquivo){
+
+return;
+
+}
+
+
+
+status.innerHTML =
+
+"Lendo etiqueta... aguarde";
+
+
+
+Tesseract.recognize(
+
+arquivo,
+
+"por",
+
+{
+
+logger:m=>{
+
+
+if(m.status==="recognizing text"){
+
+
+status.innerHTML =
+
+"Processando "+
+
+Math.round(m.progress*100)
+
++
+
+"%";
+
+
+}
+
+
+}
+
+}
+
+)
+
+.then(({data:{text}})=>{
+
+
+status.innerHTML =
+
+"Texto capturado";
+
+
+processarEtiqueta(text);
+
+
+})
+
+.catch(()=>{
+
+
+status.innerHTML =
+
+"Erro ao ler imagem";
+
+
+});
+
+
+});
+
+
+
+// Processar texto da etiqueta
+
+function processarEtiqueta(texto){
+
+
+
+const cepEncontrado =
+
+texto.match(/\d{5}-?\d{3}/);
+
+
+
+if(cepEncontrado){
+
+
+const cep =
+
+cepEncontrado[0].replace(/\D/g,"");
+
+
+
+const bloco =
+
+document.querySelector(".bloco-endereco:last-child");
+
+
+
+bloco.querySelector(".cep").value =
+
+cep.substring(0,5)+"-"+cep.substring(5);
+
+
+
+buscarCEP(cep,bloco);
+
+
+}else{
+
+
+status.innerHTML =
+
+"CEP nao encontrado na etiqueta";
+
+
+}
+
+
+}// Buscar CEP
 
 function buscarCEP(cep,bloco){
 
 
 status.innerHTML =
+
 "Buscando endereco...";
 
 
@@ -395,6 +646,7 @@ fetch(
 if(dados.erro){
 
 status.innerHTML =
+
 "CEP nao encontrado";
 
 return;
@@ -404,21 +656,25 @@ return;
 
 
 bloco.dataset.rua =
+
 dados.logradouro || "";
 
 
 
 bloco.dataset.bairro =
+
 dados.bairro || "";
 
 
 
 bloco.dataset.cidade =
+
 dados.localidade || "";
 
 
 
 bloco.dataset.uf =
+
 dados.uf || "";
 
 
@@ -428,21 +684,12 @@ montarEndereco(bloco);
 
 
 status.innerHTML =
+
 "Endereco encontrado";
 
 
-salvarDados();
-
-
-})
-
-
-.catch(()=>{
-
-status.innerHTML =
-"Erro ao consultar CEP";
-
 });
+
 
 
 }
@@ -454,29 +701,35 @@ function montarEndereco(bloco){
 
 
 const rua =
+
 bloco.dataset.rua || "";
 
 
 const bairro =
+
 bloco.dataset.bairro || "";
 
 
 const cidade =
+
 bloco.dataset.cidade || "";
 
 
 const uf =
+
 bloco.dataset.uf || "";
 
 
 
 const numero =
+
 bloco.querySelector(".numero")
 .value.trim();
 
 
 
 const complemento =
+
 bloco.querySelector(".complemento")
 .value.trim();
 
@@ -527,18 +780,19 @@ bloco.querySelector(".endereco").innerText =
 texto || "Aguardando CEP";
 
 
-
-salvarDados();
-
 }
 
 
 
 
+// Remover acentos
+
 function removerAcentos(texto){
 
 return texto
+
 .normalize("NFD")
+
 .replace(/[\u0300-\u036f]/g,"");
 
 }
@@ -546,93 +800,29 @@ return texto
 
 
 
-function salvarDados(){
-
-
-const dados = [];
-
-
-
-document.querySelectorAll(".bloco-endereco")
-
-.forEach(bloco=>{
-
-
-dados.push({
-
-sequencia:
-
-bloco.querySelector(".sequencia").value,
-
-
-cep:
-
-bloco.querySelector(".cep").value,
-
-
-numero:
-
-bloco.querySelector(".numero").value,
-
-
-complemento:
-
-bloco.querySelector(".complemento").value,
-
-
-rua:
-
-bloco.dataset.rua || "",
-
-
-bairro:
-
-bloco.dataset.bairro || "",
-
-
-cidade:
-
-bloco.dataset.cidade || "",
-
-
-uf:
-
-bloco.dataset.uf || ""
-
-});
-
-
-});
-
-
-
-localStorage.setItem(
-
-"rotas_circuit",
-
-JSON.stringify(dados)
-
-);
-
-
-}
-    // Botao adicionar linha
+// Adicionar linha
 
 btnAdicionar.addEventListener(
+
 "click",
+
 ()=>{
 
 criarLinha();
 
-});
+}
+
+);
 
 
 
 
-// Exportar CSV para Circuit
+// Exportar CSV Circuit
 
 btnExportar.addEventListener(
+
 "click",
+
 ()=>{
 
 
@@ -649,16 +839,12 @@ document.querySelectorAll(".bloco-endereco")
 
 const sequencia =
 
-bloco.querySelector(".sequencia")
-.value.trim();
-
+bloco.querySelector(".sequencia").value;
 
 
 const endereco =
 
-bloco.querySelector(".endereco")
-.innerText.trim();
-
+bloco.querySelector(".endereco").innerText;
 
 
 const bairro =
@@ -666,17 +852,14 @@ const bairro =
 bloco.dataset.bairro || "";
 
 
-
 const cidade =
 
 bloco.dataset.cidade || "";
 
 
-
 const cep =
 
-bloco.querySelector(".cep")
-.value.trim();
+bloco.querySelector(".cep").value;
 
 
 
@@ -734,16 +917,11 @@ removerAcentos(cep)
 
 
 
-
-// Criar arquivo sem BOM
-
 const blob =
 
 new Blob(
 
-[
-csv
-],
+[csv],
 
 {
 
@@ -784,106 +962,9 @@ link.click();
 
 
 
-
-// Carregar dados salvos
-
-function carregarDados(){
-
-
-const dados =
-
-JSON.parse(
-
-localStorage.getItem("rotas_circuit")
-
-);
-
-
-
-if(!dados || dados.length===0){
-
-return;
-
-}
-
-
-
-lista.innerHTML = "";
-
-
-
-dados.forEach(item=>{
-
-
-criarLinha();
-
-
-
-const bloco =
-
-lista.lastElementChild;
-
-
-
-bloco.querySelector(".cep").value =
-
-item.cep;
-
-
-
-bloco.querySelector(".numero").value =
-
-item.numero;
-
-
-
-bloco.querySelector(".complemento").value =
-
-item.complemento;
-
-
-
-bloco.dataset.rua =
-
-item.rua;
-
-
-
-bloco.dataset.bairro =
-
-item.bairro;
-
-
-
-bloco.dataset.cidade =
-
-item.cidade;
-
-
-
-bloco.dataset.uf =
-
-item.uf;
-
-
-
-montarEndereco(bloco);
-
-
-
-});
-
-
-
-}
-
-
-
 // iniciar aplicativo
 
 criarLinha();
-
-carregarDados();
 
 
 </script>
