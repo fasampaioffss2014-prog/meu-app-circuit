@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" translate="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Circuito Alimentador</title>
-    <!-- Biblioteca do OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; max-width: 500px; margin: 0 auto; }
@@ -45,7 +44,6 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Rotas lidas entram aqui -->
             </tbody>
         </table>
 
@@ -61,7 +59,7 @@
         const nomeArquivo = document.getElementById('nome-arquivo');
 
         let rotasExtraidas = [];
-        let proximoId = 4; // Começa no 4 já que você tem 3 itens no original
+        let proximoId = 4; 
 
         inputFoto.addEventListener('change', function(e) {
             const arquivo = e.target.files[0];
@@ -133,7 +131,7 @@
             const linhasTabela = tabelaCorpo.querySelectorAll('tr');
             
             linhasTabela.forEach(linha => {
-                const colunas = dynamicColumns(linha);
+                const colunas = linha.querySelectorAll('td');
                 if(colunas.length === 3) {
                     const name = colunas[0].innerText;
                     const address = colunas[1].innerText.replace(/"/g, '""');
@@ -150,10 +148,6 @@
             link.click();
             document.body.removeChild(link);
         });
-
-        function dynamicColumns(row) {
-            return row.querySelectorAll('td');
-        }
     </script>
 </body>
 </html>
