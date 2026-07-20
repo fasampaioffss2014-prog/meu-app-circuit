@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Circuito Alimentador</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; max-width: 500px; margin: 0 auto; }
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 15px; max-width: 600px; margin: 0 auto; }
         .container { background-color: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
         h2 { color: #a855f7; margin-top: 0; }
         #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; }
@@ -13,55 +13,124 @@
         .btn-add { background-color: #241935; color: #a855f7; border: 1px dashed #a855f7; margin-top: 15px; }
         .btn-export { background-color: #e1e1e6; color: #121212; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #1e1e1e; }
-        th, td { border: 1px solid #29292e; padding: 10px; text-align: left; font-size: 14px; }
+        th, td { border: 1px solid #29292e; padding: 8px; text-align: left; font-size: 13px; }
         th { background-color: #202024; color: #a855f7; }
         td[contenteditable="true"] { background-color: #29292e; border: 1px solid #a855f7; color: #ffffff; }
+        .bloqueado { background-color: #151515; color: #888; cursor: not-allowed; }
+        .map-container { margin-top: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #29292e; background-color: #202024; display: none; }
+        iframe { width: 100%; height: 250px; border: 0; display: block; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h2>Circuito Alimentador 📋</h2>
-        <div id="status">Insira os dados manualmente ou cole o texto do Google Lens abaixo:</div>
+        <div id="status">Digite o CEP para buscar a rua, depois insira o complemento!</div>
 
         <table id="tabela-rotas">
             <thead>
                 <tr>
-                    <th>Name (Pacote)</th>
-                    <th>Address (Endereço)</th>
-                    <th>Postal Code (CEP)</th>
+                    <th>Pacote</th>
+                    <th>CEP</th>
+                    <th>Complemento (Nº/Ap)</th>
+                    <th>Endereço Completo</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td contenteditable="true"></td>
-                    <td contenteditable="true"></td>
-                    <td contenteditable="true"></td>
+                    <td contenteditable="true" class="campo-cep"></td>
+                    <td contenteditable="true" class="campo-complemento"></td>
+                    <td class="campo-endereco-completo bloqueado" data-rua=""></td>
                 </tr>
             </tbody>
         </table>
 
         <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
         <button id="btn-exportar" class="btn btn-export">Baixar CSV para o Circuit</button>
+
+        <!-- Área do Mapa -->
+        <div class="map-container" id="container-mapa">
+            <iframe id="mapa-google" src=""></iframe>
+        </div>
     </div>
 
     <script>
         const tabelaCorpo = document.querySelector('#tabela-rotas tbody');
         const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
+        const containerMapa = document.getElementById('container-mapa');
+        const mapaGoogle = document.getElementById('mapa-google');
 
-        // Adiciona uma nova linha com todos os campos em branco e editáveis
+        // Busca o CEP e salva a rua base na tabela
+        function buscarCep(cep, linha) {
+            const cepLimpo = cep.trim().replace('-', '').replace(/\s/g, '');
+            const celulaEndereco = linha.querySelector('.campo-endereco-completo');
+            const complemento = linha.querySelector('.campo-complemento').innerText.trim();
+            
+            if (cepLimpo.length === 8 && /^\d+$/.test(cepLimpo)) {
+                statusDivText("Buscando CEP...");
+                
+                fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`)
+                .then(res => res.json())
+                .then(dados => {
+                    if(!dados.erro) {
+                        const ruaBase = `${dados.logradouro}, ${dados.bairro} - ${dados.localidade}`;
+                        celulaEndereco.setAttribute('data-rua', ruaBase);
+                        
+                        // Junta a rua com o complemento atual (se houver)
+                        celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
+                        
+                        // Atualiza o mapa
+                        mapaGoogle.src = `https://maps.google.com/maps?q=${cepLimpo}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+                        containerMapa.style.display = 'block';
+                        statusDivText("Endereço atualizado!");
+                    } else {
+                        statusDivText("CEP não encontrado.");
+                    }
+                })
+                .catch(() => {
+                    statusDivText("Erro de conexão com o ViaCEP.");
+                });
+            }
+        }
+
+        function statusDivText(txt) {
+            document.getElementById('status').innerText = txt;
+        }
+
+        // Escuta as alterações na tabela (CEP ou Complemento)
+        tabelaCorpo.addEventListener('input', (e) => {
+            const linhaAtual = e.target.parentElement;
+            
+            if (e.target.classList.contains('campo-cep')) {
+                buscarCep(e.target.innerText, linhaAtual);
+            }
+            
+            if (e.target.classList.contains('campo-complemento')) {
+                const celulaEndereco = linhaAtual.querySelector('.campo-endereco-completo');
+                const ruaBase = celulaEndereco.getAttribute('data-rua');
+                const complemento = e.target.innerText.trim();
+                
+                if (ruaBase) {
+                    celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
+                }
+            }
+        });
+
+        // Cria nova linha com o campo de complemento
         btnAdicionar.addEventListener('click', () => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
-                <td contenteditable="true"></td>
+                <td contenteditable="true" class="campo-cep"></td>
+                <td contenteditable="true" class="campo-complemento"></td>
+                <td class="campo-endereco-completo bloqueado" data-rua=""></td>
             `;
             tabelaCorpo.appendChild(tr);
         });
 
-        // Gera o arquivo CSV perfeitamente alinhado para o Circuit
+        // Gera o CSV combinando o endereço final gerado
         btnExportar.addEventListener('click', () => {
             let csvContent = "data:text/csv;charset=utf-8,Name,Address,Postal Code\n";
             const linhasTabela = tabelaCorpo.querySelectorAll('tr');
@@ -69,12 +138,11 @@
             
             linhasTabela.forEach(linha => {
                 const colunas = linha.querySelectorAll('td');
-                if(colunas.length === 3) {
+                if(colunas.length === 4) {
                     const name = colunas[0].innerText.trim();
-                    const address = colunas[1].innerText.trim().replace(/"/g, '""');
-                    const postalCode = colunas[2].innerText.trim().replace('-', ''); // Remove o traço do CEP se houver
+                    const postalCode = colunas[1].innerText.trim().replace('-', '');
+                    const address = colunas[3].innerText.trim().replace(/"/g, '""');
                     
-                    // Só adiciona ao arquivo se pelo menos um dos campos estiver preenchido
                     if (name || address || postalCode) {
                         csvContent += `"${name}","${address}","${postalCode}"\n`;
                         temDados = true;
@@ -83,7 +151,7 @@
             });
 
             if (!temDados) {
-                alert("Por favor, preencha pelo menos uma linha antes de exportar.");
+                alert("Insira dados antes de baixar o arquivo.");
                 return;
             }
 
