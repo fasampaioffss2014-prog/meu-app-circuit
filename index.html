@@ -15,28 +15,28 @@
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #1e1e1e; }
         th, td { border: 1px solid #29292e; padding: 10px; text-align: left; font-size: 14px; }
         th { background-color: #202024; color: #a855f7; }
-        td[contenteditable="true"] { background-color: #29292e; border: 1px solid #a855f7; color: #ffffff; min-height: 20px; }
+        td[contenteditable="true"] { background-color: #29292e; border: 1px solid #a855f7; color: #ffffff; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h2>Circuito Alimentador 📋</h2>
-        <div id="status">Use o Google Lens para copiar o endereço e cole nas caixas abaixo:</div>
+        <div id="status">Insira os dados manualmente ou cole o texto do Google Lens abaixo:</div>
 
         <table id="tabela-rotas">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Address</th>
-                    <th>Postal Code</th>
+                    <th>Name (Pacote)</th>
+                    <th>Address (Endereço)</th>
+                    <th>Postal Code (CEP)</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td>4</td>
-                    <td contenteditable="true" placeholder="Cole o endereço aqui"></td>
-                    <td contenteditable="true" placeholder="CEP"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
                 </tr>
             </tbody>
         </table>
@@ -49,34 +49,43 @@
         const tabelaCorpo = document.querySelector('#tabela-rotas tbody');
         const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
-        let proximoId = 5;
 
+        // Adiciona uma nova linha com todos os campos em branco e editáveis
         btnAdicionar.addEventListener('click', () => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${proximoId++}</td>
+                <td contenteditable="true"></td>
                 <td contenteditable="true"></td>
                 <td contenteditable="true"></td>
             `;
             tabelaCorpo.appendChild(tr);
         });
 
+        // Gera o arquivo CSV perfeitamente alinhado para o Circuit
         btnExportar.addEventListener('click', () => {
             let csvContent = "data:text/csv;charset=utf-8,Name,Address,Postal Code\n";
             const linhasTabela = tabelaCorpo.querySelectorAll('tr');
+            let temDados = false;
             
             linhasTabela.forEach(linha => {
                 const colunas = linha.querySelectorAll('td');
                 if(colunas.length === 3) {
                     const name = colunas[0].innerText.trim();
                     const address = colunas[1].innerText.trim().replace(/"/g, '""');
-                    const postalCode = colunas[2].innerText.trim();
+                    const postalCode = colunas[2].innerText.trim().replace('-', ''); // Remove o traço do CEP se houver
                     
-                    if (address || postalCode) {
-                        csvContent += `${name},"${address}",${postalCode}\n`;
+                    // Só adiciona ao arquivo se pelo menos um dos campos estiver preenchido
+                    if (name || address || postalCode) {
+                        csvContent += `"${name}","${address}","${postalCode}"\n`;
+                        temDados = true;
                     }
                 }
             });
+
+            if (!temDados) {
+                alert("Por favor, preencha pelo menos uma linha antes de exportar.");
+                return;
+            }
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
