@@ -54,13 +54,16 @@
         const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
 
-        // Remove quebras de linha e sujeiras de texto do contenteditable mobile
+        // Configuração opcional para Google Maps oficial
+        // Se tiver uma chave do Google, mude para true e coloque sua chave abaixo
+        const USAR_GOOGLE_MAPS_OFICIAL = false;
+        const GOOGLE_MAPS_API_KEY = "SUA_CHAVE_AQUI";
+
         function obterTextoLimpo(elemento) {
             if (!elemento) return '';
             return elemento.innerText.replace(/\n/g, '').replace(/\r/g, '').trim();
         }
 
-        // CORREÇÃO MAPS: Busca geocodificada usando HTTPS do OpenStreetMap para evitar bloqueios no Vercel
         function buscarEAtualizarEndereco(linha) {
             const celulaCep = linha.querySelector('.campo-cep');
             const cepLimpo = obterTextoLimpo(celulaCep).replace(/\D/g, '');
@@ -68,68 +71,69 @@
             const complemento = obterTextoLimpo(linha.querySelector('.campo-complemento'));
             
             if (cepLimpo.length === 8) {
-                document.getElementById('status').innerText = "Buscando endereço via Maps...";
+                document.getElementById('status').innerText = "Buscando localização da rua...";
+
+                let urlFetch = `https://awesomeapi.com.br{cepLimpo}`;
                 
-                // Requisição HTTPS segura incluindo o país para precisão do mapa
-                fetch(`https://openstreetmap.org{cepLimpo}&country=Brazil&format=json&addressdetails=1`)
+                if (USAR_GOOGLE_MAPS_OFICIAL) {
+                    urlFetch = `https://googleapis.com{cepLimpo}&components=country:BR&key=${GOOGLE_MAPS_API_KEY}`;
+                }
+                
+                fetch(urlFetch)
                 .then(res => res.json())
                 .then(dados => {
-                    if (dados && dados.length > 0) {
-                        const local = dados[0].address;
-                        const rua = local.road || local.pedestrian || '';
-                        const bairro = local.suburb || local.neighbourhood || '';
-                        const cidade = local.city || local.town || local.municipality || '';
-                        const estado = local.state || '';
+                    let rua = '', bairro = '', cidade = '', estado = '';
 
-                        if (rua) {
-                            const ruaBase = `${rua}, ${bairro} - ${cidade}, ${estado}`;
-                            celulaEndereco.setAttribute('data-rua', ruaBase);
-                            
-                            // Monta o endereço final unificado exigido pelo Circuit
-                            celulaEndereco.innerText = complemento ? `${rua}, ${complemento} - ${bairro}, ${cidade} - BR` : `${rua} - ${bairro}, ${cidade} - BR`;
-                            document.getElementById('status').innerText = "Endereço localizado com sucesso!";
-                        } else {
-                            // Fallback caso a rua específica não venha indexada, traz o mapeamento da região do CEP
-                            const regiaoBase = `${bairro || cidade} - ${estado}`;
-                            celulaEndereco.setAttribute('data-rua', regiaoBase);
-                            celulaEndereco.innerText = complemento ? `${complemento}, ${regiaoBase} - BR` : `${regiaoBase} - BR`;
-                            document.getElementById('status').innerText = "Endereço parcial localizado.";
+                    if (USAR_GOOGLE_MAPS_OFICIAL) {
+                        if (dados.results && dados.results.length > 0) {
+                            const componentes = dados.results[0].address_components;
+                            componentes.forEach(c => {
+                                if (c.types.includes("route")) rua = c.long_name;
+                                if (c.types.includes("sublocality") || c.types.includes("neighborhood")) bairro = c.long_name;
+                                if (c.types.includes("administrative_area_level_2")) cidade = c.long_name;
+                                if (c.types.includes("administrative_area_level_1")) estado = c.short_name;
+                            });
                         }
                     } else {
-                        document.getElementById('status').innerText = "CEP não encontrado na base de mapas.";
+                        // Resposta usando a API HTTPS alternativa e gratuita (AwesomeAPI)
+                        if (dados && dados.address) {
+                            rua = dados.address_name || '';
+                            bairro = dados.district || '';
+                            cidade = dados.city || '';
+                            estado = dados.state || '';
+                        }
+                    }
+
+                    if (rua) {
+                        const ruaBase = `${rua}, ${bairro} - ${cidade}, ${estado}`;
+                        celulaEndereco.setAttribute('data-rua', ruaBase);
+                        
+                        // Monta o formato exato que a planilha do Circuit precisa para roteirizar
+                        celulaEndereco.innerText = complemento ? `${rua}, ${complemento} - ${bairro}, ${cidade} - BR` : `${rua} - ${bairro}, ${cidade} - BR`;
+                        document.getElementById('status').innerText = "Endereço estruturado para o Circuit!";
+                    } else {
+                        document.getElementById('status').innerText = "Rua não encontrada para este CEP.";
                         celulaEndereco.innerText = "";
-                        celulaEndereco.removeAttribute('data-rua');
                     }
                 })
                 .catch(() => {
-                    document.getElementById('status').innerText = "Erro ao conectar com o serviço de mapas.";
+                    document.getElementById('status').innerText = "Erro na comunicação com o servidor de mapas.";
                 });
             }
         }
 
-        // Monitora as alterações nas colunas para sincronizar a quarta aba automaticamente
+        // Monitora as alterações e cliques fora
         tabelaCorpo.addEventListener('input', (e) => {
             const linhaAtual = e.target.parentElement;
-            
             if (e.target.classList.contains('campo-cep')) {
                 const cepLimpo = obterTextoLimpo(e.target).replace(/\D/g, '');
-                if (cepLimpo.length === 8) {
-                    buscarEAtualizarEndereco(linhaAtual);
-                }
+                if (cepLimpo.length === 8) buscarEAtualizarEndereco(linhaAtual);
             }
-            
             if (e.target.classList.contains('campo-complemento')) {
-                const celulaEndereco = linhaAtual.querySelector('.campo-endereco-completo');
-                const ruaBase = celulaEndereco.getAttribute('data-rua');
-                const complemento = obterTextoLimpo(e.target);
-                
-                if (ruaBase) {
-                    buscarEAtualizarEndereco(linhaAtual); // Re-executa para estruturar o número no local correto da string do Circuit
-                }
+                buscarEAtualizarEndereco(linhaAtual);
             }
         });
 
-        // Garante a busca se o usuário apenas clicar fora
         tabelaCorpo.addEventListener('focusout', (e) => {
             if (e.target.classList.contains('campo-cep') || e.target.classList.contains('campo-complemento')) {
                 buscarEAtualizarEndereco(e.target.parentElement);
@@ -153,11 +157,10 @@
             novaLinha.querySelector('.campo-pacote').focus();
         });
 
-        // Gerencia teclas e simula perfeitamente a navegação por TAB
+        // Evento Enter funcionando como Tab
         tabelaCorpo.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.keyCode === 13) {
                 e.preventDefault();
-                
                 const celulaAtual = e.target;
                 const linhaAtual = celulaAtual.parentElement;
 
@@ -170,9 +173,7 @@
                 } 
                 else if (celulaAtual.classList.contains('campo-complemento')) {
                     const novaLinha = adicionarNovaLinha();
-                    setTimeout(() => {
-                        novaLinha.querySelector('.campo-pacote').focus();
-                    }, 50);
+                    setTimeout(() => { novaLinha.querySelector('.campo-pacote').focus(); }, 50);
                 }
             }
         });
@@ -180,13 +181,16 @@
         btnExportar.addEventListener('click', () => {
             const linhas = tabelaCorpo.querySelectorAll('tr');
             let conteudoCsv = "Pacote;CEP;Complemento;Endereco Completo\n";
-
             linhas.forEach(linha => {
                 const pacote = obterTextoLimpo(linha.querySelector('.campo-pacote'));
                 const cep = obterTextoLimpo(linha.querySelector('.campo-cep'));
                 const complemento = obterTextoLimpo(linha.querySelector('.campo-complemento'));
                 const endereco = obterTextoLimpo(linha.querySelector('.campo-endereco-completo'));
-
                 if (pacote || cep || endereco) {
                     conteudoCsv += `${pacote};${cep};${complemento};${endereco}\n`;
-                    
+                }
+            });
+            const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            
