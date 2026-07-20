@@ -34,7 +34,7 @@
         <div id="status">Insira os dados. Avance usando a tecla Enter/Próximo.</div>
 
         <div id="lista-linhas">
-            <!-- As linhas de endereço entram aqui dinamicamente -->
+            <!-- Os blocos entram aqui dinamicamente -->
         </div>
 
         <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
@@ -46,30 +46,25 @@
         const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
 
-        // Cria a estrutura visual exata baseada nos 4 fundamentos informados
         function criarNovaLinha() {
             const bloco = document.createElement('div');
             bloco.className = 'bloco-endereco';
             
             bloco.innerHTML = `
                 <div class="linha-rota">
-                    <!-- Fundamento 1: Nome ou Número do Pacote -->
                     <div class="label-grupo">
                         Pacote / Nome
-                        <input type="text" class="campo-pacote" placeholder="Ex: 10">
+                        <input type="text" class="campo-pacote" placeholder="Ex: Pacote 10">
                     </div>
-                    <!-- Fundamento 2: CEP -->
                     <div class="label-grupo">
                         CEP
                         <input type="span" inputmode="numeric" class="campo-cep" placeholder="00000-000" maxlength="9">
                     </div>
-                    <!-- Fundamento 3: Complemento -->
                     <div class="label-grupo">
                         Complemento
                         <input type="text" class="campo-complemento" placeholder="Ex: casa 54">
                     </div>
                 </div>
-                <!-- Fundamento 4: Bloco do Endereço Automático gerado para o Circuit -->
                 <div class="resultado-container">
                     Endereço Completo (Circuit):
                     <strong class="campo-endereco-completo">Aguardando CEP válido...</strong>
@@ -82,10 +77,8 @@
             const inputCep = bloco.querySelector('.campo-cep');
             const inputComplemento = bloco.querySelector('.campo-complemento');
 
-            // Foca automaticamente no primeiro campo do novo bloco inserido
             inputPacote.focus();
 
-            // Gerencia as ações de digitação e máscaras
             inputCep.addEventListener('input', (e) => {
                 let v = e.target.value.replace(/\D/g, '');
                 if (v.length > 8) v = v.slice(0, 8);
@@ -100,7 +93,6 @@
                 }
             });
 
-            // Atualiza o endereço dinamicamente se o usuário alterar o complemento
             inputComplemento.addEventListener('input', () => {
                 const ruaSalva = bloco.getAttribute('data-rua-base');
                 if (ruaSalva) {
@@ -108,7 +100,6 @@
                 }
             });
 
-            // Comportamento inteligente da tecla ENTER agindo estritamente como a tecla TAB do computador
             bloco.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -117,13 +108,12 @@
                     } else if (e.target === inputCep) {
                         inputComplemento.focus();
                     } else if (e.target === inputComplemento) {
-                        criarNovaLinha(); // Ao dar enter no complemento, abre automaticamente o próximo bloco embaixo
+                        criarNovaLinha();
                     }
                 }
             });
         }
 
-        // Faz a busca segura via HTTPS para não bloquear na Vercel
         function buscarEnderecoAPI(cep, bloco) {
             const status = document.getElementById('status');
             const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
@@ -136,7 +126,6 @@
             })
             .then(dados => {
                 if (dados && dados.address_name) {
-                    // Armazena as propriedades bases no nó do bloco para usar na concatenação
                     bloco.setAttribute('data-rua-base', dados.address_name);
                     bloco.setAttribute('data-bairro', dados.district || '');
                     bloco.setAttribute('data-cidade', dados.city || '');
@@ -156,7 +145,6 @@
             });
         }
 
-        // Combina e gera a saída mastigada que a planilha do Circuit precisa para roteirizar
         function montarEnderecoFinal(bloco) {
             const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
             const complemento = bloco.querySelector('.campo-complemento').value.trim();
@@ -166,6 +154,7 @@
             const city = bloco.getAttribute('data-cidade');
             const uf = bloco.getAttribute('data-estado');
 
+            // Organização ideal exigida para leitura perfeita no Circuit
             let formatado = rua;
             if (complemento) {
                 formatado += `, ${complemento}`;
@@ -175,31 +164,34 @@
             campoTextoCompleto.innerText = formatado;
         }
 
-        // Inicializa o app criando a primeira linha na tela
         criarNovaLinha();
 
         btnAdicionar.addEventListener('click', criarNovaLinha);
 
-        // Exportação do CSV sem variáveis quebradas
+        // CORREÇÃO CRÍTICA DO CSV: Adiciona colunas oficiais do Circuit e corrige acentuação distorcida
         btnExportar.addEventListener('click', () => {
             const blocos = document.querySelectorAll('.bloco-endereco');
-            let conteudoCsv = "Pacote;CEP;Complemento;Endereco Completo\n";
+            
+            // Name e Address são as colunas padrão que o Circuit lê direto sem pedir para você mapear manualmente
+            let conteudoCsv = "Name;Address\n";
 
             blocos.forEach(bloco => {
                 const pacote = bloco.querySelector('.campo-pacote').value.trim();
-                const cep = bloco.querySelector('.campo-cep').value.trim();
-                const complemento = bloco.querySelector('.campo-complemento').value.trim();
                 const endereco = bloco.querySelector('.campo-endereco-completo').innerText.trim();
 
-                if (pacote || cep || (endereco && !endereco.includes("Aguardando"))) {
-                    conteudoCsv += `${pacote};${cep};${complemento};${endereco}\n`;
+                if (pacote || (endereco && !endereco.includes("Aguardando"))) {
+                    // Limpa ponto e vírgula de dentro dos campos para não quebrar as colunas do CSV
+                    const pacoteLimpo = pacote.replace(/;/g, ' ');
+                    const enderecoLimpo = endereco.replace(/;/g, ' ');
+                    conteudoCsv += `${pacoteLimpo};${enderecoLimpo}\n`;
                 }
             });
 
-            const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+            // CORREÇÃO DE ACENTOS: O caractere '\ufeff' força o Excel/Sheets a ler acentos correntemente (Rua Antônio)
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), conteudoCsv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", "circuito_alimentador.csv");
+            link.setAttribute("download", "rotas_circuit.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
