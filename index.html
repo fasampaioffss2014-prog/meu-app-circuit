@@ -3,49 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carregar Rotas por Foto</title>
-    <!-- Incluindo a biblioteca de OCR diretamente no navegador -->
+    <title>Circuito Alimentador</title>
+    <!-- Biblioteca do OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
-        .box { border: 2px dashed #ccc; padding: 20px; text-align: center; margin-bottom: 20px; border-radius: 8px; }
-        #status { color: #666; font-style: italic; margin: 10px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f4f4f4; }
-        .btn { background-color: #2ea44f; color: white; padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-        .btn:disabled { background-color: #94d3a2; cursor: not-allowed; }
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; max-width: 500px; margin: 0 auto; }
+        .container { background-color: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
+        h2 { color: #a855f7; margin-top: 0; }
+        .box-upload { border: 2px dashed #a855f7; padding: 20px; border-radius: 8px; margin: 20px 0; background-color: #241935; cursor: pointer; }
+        #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; }
+        .btn { background-color: #a855f7; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-bottom: 10px; display: block; }
+        .btn-export { background-color: #e1e1e6; color: #121212; }
+        .btn:disabled { background-color: #4c286a; color: #7a7a7a; cursor: not-allowed; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #1e1e1e; }
+        th, td { border: 1px solid #29292e; padding: 10px; text-align: left; font-size: 14px; }
+        th { background-color: #202024; color: #a855f7; }
+        td[contenteditable="true"] { background-color: #29292e; border-radius: 4px; }
+        #nome-arquivo { font-size: 12px; color: #aaa; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <h2>Carregar Rotas por Foto 📸</h2>
-    
-    <div class="box">
-        <!-- O atributo 'accept="image/*"' abre a câmera no celular ou seletor de arquivos no PC -->
-        <input type="file" id="input-foto" accept="image/*" style="display: none;">
-        <button class="btn" onclick="document.getElementById('input-foto').click()">Tirar Foto ou Escolher Imagem</button>
-        <p id="nome-arquivo"></p>
+    <div class="container">
+        <h2>Circuito Alimentador 📸</h2>
+        
+        <div class="box-upload" onclick="document.getElementById('input-foto').click()">
+            <input type="file" id="input-foto" accept="image/*" style="display: none;">
+            <span style="font-size: 30px;">📷</span>
+            <p style="margin: 5px 0 0 0; font-weight: bold;">Tirar Foto / Carregar Lista</p>
+            <p id="nome-arquivo">Nenhum arquivo selecionado</p>
+        </div>
+
+        <div id="status">Aguardando imagem para leitura...</div>
+
+        <table id="tabela-rotas">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Postal Code</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rotas lidas entram aqui -->
+            </tbody>
+        </table>
+
+        <br>
+        <button id="btn-exportar" class="btn btn-export" disabled>Baixar CSV para o Circuit</button>
     </div>
-
-    <div id="status">Aguardando imagem...</div>
-
-    <h3>Rotas Identificadas</h3>
-    <table id="tabela-rotas">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Address</th>
-                <th>Postal Code</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Os endereços extraídos vão aparecer aqui -->
-        </tbody>
-    </table>
-
-    <br>
-    <button id="btn-exportar" class="btn" style="background-color: #0366d6;" disabled>Baixar CSV Atualizado</button>
 
     <script>
         const inputFoto = document.getElementById('input-foto');
@@ -55,38 +61,34 @@
         const nomeArquivo = document.getElementById('nome-arquivo');
 
         let rotasExtraidas = [];
-        // Altere este ID inicial baseado em quantas rotas você já tem no arquivo original
-        let proximoId = 4; 
+        let proximoId = 4; // Começa no 4 já que você tem 3 itens no original
 
         inputFoto.addEventListener('change', function(e) {
             const arquivo = e.target.files[0];
             if (!arquivo) return;
 
             nomeArquivo.textContent = arquivo.name;
-            statusDiv.textContent = "Processando imagem... Isso pode levar alguns segundos.";
-            tabelaCorpo.innerHTML = ""; // Limpa a tabela anterior
+            statusDiv.textContent = "Lendo imagem... Aguarde.";
+            tabelaCorpo.innerHTML = ""; 
             rotasExtraidas = [];
             btnExportar.disabled = true;
 
-            // Executa o OCR na imagem selecionada (usando o idioma português)
             Tesseract.recognize(arquivo, 'por', {
                 logger: m => {
                     if (m.status === 'recognizing text') {
-                        statusDiv.textContent = `Reconhecendo texto: ${Math.round(m.progress * 100)}%`;
+                        statusDiv.textContent = `Processando: ${Math.round(m.progress * 100)}%`;
                     }
                 }
             }).then(({ data: { text } }) => {
-                statusDiv.textContent = "Processamento concluído! Filtrando dados...";
                 processarTextoExtraido(text);
             }).catch(erro => {
                 console.error(erro);
-                statusDiv.textContent = "Erro ao processar a imagem.";
+                statusDiv.textContent = "Erro ao ler a imagem.";
             });
         });
 
         function processarTextoExtraido(texto) {
             const linhas = texto.split('\n');
-            // Regex para identificar CEPs de 8 dígitos (com ou sem hífen)
             const padraoCep = /\b\d{5}-?\d{3}\b/;
             let contador = proximoId;
 
@@ -98,16 +100,10 @@
                 if (matchCep) {
                     const cepOriginal = matchCep[0];
                     const cepLimpo = cepOriginal.replace('-', '');
-                    
-                    // O endereço costuma ser o restante da linha removendo o CEP
-                    const endereco = linha.replace(cepOriginal, '').replace(/^[,.\s]+|[,.\s]+$/g, '').trim();
+                    const endereco = linha.replace(cepOriginal, '').replace(/^[,.\s\-|]+|[,.\s\-|]+$/g, '').trim();
 
                     if (endereco) {
-                        const novaRota = {
-                            Name: contador++,
-                            Address: endereco,
-                            PostalCode: cepLimpo
-                        };
+                        const novaRota = { Name: contador++, Address: endereco, PostalCode: cepLimpo };
                         rotasExtraidas.push(novaRota);
                         adicionarLinhaNaTabela(novaRota);
                     }
@@ -115,10 +111,10 @@
             });
 
             if (rotasExtraidas.length > 0) {
-                statusDiv.textContent = `${rotasExtraidas.length} rota(s) encontrada(s).`;
+                statusDiv.textContent = `${rotasExtraidas.length} rota(s) carregada(s). Toque no texto para corrigir se necessário!`;
                 btnExportar.disabled = false;
             } else {
-                statusDiv.textContent = "Nenhum CEP/Endereço legível foi encontrado na imagem. Tente uma foto mais nítida.";
+                statusDiv.textContent = "Nenhum endereço com CEP reconhecido. Tente focar melhor na foto.";
             }
         }
 
@@ -132,28 +128,32 @@
             tabelaCorpo.appendChild(tr);
         }
 
-        // Função para gerar e baixar o arquivo CSV com as novas rotas
         btnExportar.addEventListener('click', () => {
             let csvContent = "data:text/csv;charset=utf-8,Name,Address,Postal Code\n";
-            
-            // Pega os dados direto da tabela (caso o usuário tenha corrigido algum erro de digitação do OCR)
             const linhasTabela = tabelaCorpo.querySelectorAll('tr');
+            
             linhasTabela.forEach(linha => {
-                const colunas = linha.querySelectorAll('td');
-                const name = colunas[0].innerText;
-                const address = colunas[1].innerText.replace(/"/g, '""'); // escapa aspas
-                const postalCode = colunas[2].innerText;
-                csvContent += `${name},"${address}",${postalCode}\n`;
+                const colunas = dynamicColumns(linha);
+                if(colunas.length === 3) {
+                    const name = colunas[0].innerText;
+                    const address = colunas[1].innerText.replace(/"/g, '""');
+                    const postalCode = colunas[2].innerText;
+                    csvContent += `${name},"${address}",${postalCode}\n`;
+                }
             });
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "rotas_circuit_atualizado.csv");
+            link.setAttribute("download", "rotas_circuit.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         });
+
+        function dynamicColumns(row) {
+            return row.querySelectorAll('td');
+        }
     </script>
 </body>
 </html>
