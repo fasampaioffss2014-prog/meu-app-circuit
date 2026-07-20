@@ -11,115 +11,107 @@
 <style>
 
 body{
-    font-family:Arial,sans-serif;
-    background:#121212;
-    color:#e0e0e0;
-    padding:15px;
-    max-width:650px;
-    margin:auto;
+font-family:Arial,sans-serif;
+background:#121212;
+color:#e0e0e0;
+padding:15px;
+max-width:650px;
+margin:auto;
 }
 
 .container{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:10px;
-    box-shadow:0 4px 10px #000;
+background:#1e1e1e;
+padding:20px;
+border-radius:10px;
+box-shadow:0 4px 10px #000;
 }
 
 h2{
-    text-align:center;
-    color:#a855f7;
+text-align:center;
+color:#a855f7;
 }
 
 #status{
-    text-align:center;
-    color:#a855f7;
-    font-size:14px;
-    min-height:25px;
+text-align:center;
+color:#a855f7;
+font-size:14px;
+min-height:25px;
 }
 
 .bloco-endereco{
-    border-bottom:1px solid #333;
-    padding:15px 0;
+border-bottom:1px solid #333;
+padding:15px 0;
 }
 
 .grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
 }
 
 label{
-    color:#a855f7;
-    font-size:12px;
-    font-weight:bold;
+color:#a855f7;
+font-size:12px;
+font-weight:bold;
 }
 
 input{
-    width:100%;
-    box-sizing:border-box;
-    margin-top:5px;
-    padding:10px;
-    border-radius:6px;
-    border:1px solid #444;
-    background:#29292e;
-    color:white;
-    font-size:14px;
+width:100%;
+box-sizing:border-box;
+margin-top:5px;
+padding:10px;
+border-radius:6px;
+border:1px solid #444;
+background:#29292e;
+color:white;
+font-size:14px;
 }
 
 input:focus{
-    border-color:#a855f7;
-    outline:none;
+border-color:#a855f7;
+outline:none;
 }
 
 .resultado{
-    margin-top:12px;
-    padding:12px;
-    background:#151515;
-    border:1px dashed #a855f7;
-    border-radius:6px;
-    font-size:14px;
+margin-top:12px;
+padding:12px;
+background:#151515;
+border:1px dashed #a855f7;
+border-radius:6px;
+font-size:14px;
 }
 
 .endereco{
-    display:block;
-    color:white;
-    margin-top:5px;
+display:block;
+color:white;
+margin-top:5px;
 }
 
 .btn{
-    width:100%;
-    padding:12px;
-    margin-top:12px;
-    border:none;
-    border-radius:7px;
-    font-size:16px;
-    font-weight:bold;
-    cursor:pointer;
+width:100%;
+padding:12px;
+margin-top:12px;
+border:none;
+border-radius:7px;
+font-size:16px;
+font-weight:bold;
+cursor:pointer;
 }
 
 .adicionar{
-    background:#202024;
-    color:#a855f7;
-    border:1px solid #a855f7;
+background:#202024;
+color:#a855f7;
+border:1px solid #a855f7;
 }
 
 .exportar{
-    background:#e1e1e6;
-    color:#121212;
+background:#e1e1e6;
+color:#121212;
 }
 
 .excluir{
-    background:#7f1d1d;
-    color:white;
-}
-
-.sucesso{
-    color:#22c55e;
-}
-
-.erro{
-    color:#ef4444;
+background:#7f1d1d;
+color:white;
 }
 
 </style>
@@ -132,14 +124,13 @@ input:focus{
 
 <div class="container">
 
-
 <h2>
-Circuito Alimentador 📦
+Circuito Alimentador
 </h2>
 
 
 <div id="status">
-Digite os dados da etiqueta
+Digite os dados da entrega
 </div>
 
 
@@ -147,12 +138,12 @@ Digite os dados da etiqueta
 
 
 <button class="btn adicionar" id="adicionar">
-+ Adicionar Nova Linha
++ Adicionar Linha
 </button>
 
 
 <button class="btn exportar" id="exportar">
-Baixar CSV para Circuit
+Baixar CSV Circuit
 </button>
 
 
@@ -177,6 +168,7 @@ document.getElementById("status");
 
 function criarLinha(){
 
+
 const bloco =
 document.createElement("div");
 
@@ -186,7 +178,6 @@ bloco.className =
 
 
 bloco.innerHTML = `
-
 
 <div class="grid">
 
@@ -210,7 +201,6 @@ readonly>
 <input
 type="text"
 class="cep"
-inputmode="numeric"
 maxlength="9"
 placeholder="00000-000">
 
@@ -219,7 +209,7 @@ placeholder="00000-000">
 
 <div>
 
-<label>Número</label>
+<label>Numero</label>
 
 <input
 type="text"
@@ -236,7 +226,7 @@ placeholder="Ex: 150">
 <input
 type="text"
 class="complemento"
-placeholder="Casa, bloco, apto">
+placeholder="Casa bloco apto">
 
 </div>
 
@@ -246,11 +236,11 @@ placeholder="Casa, bloco, apto">
 
 <div class="resultado">
 
-Endereço Circuit:
+Endereco Circuit:
 
 <strong class="endereco">
 
-Aguardando CEP...
+Aguardando CEP
 
 </strong>
 
@@ -263,11 +253,12 @@ Remover linha
 
 </button>
 
-
 `;
 
 
+
 lista.appendChild(bloco);
+
 
 
 const ordem =
@@ -278,17 +269,15 @@ bloco.querySelector(".sequencia").value =
 String(ordem).padStart(3,"0");
 
 
+
 const cep =
 bloco.querySelector(".cep");
-
 
 const numero =
 bloco.querySelector(".numero");
 
-
 const complemento =
 bloco.querySelector(".complemento");
-
 
 const excluir =
 bloco.querySelector(".excluir");
@@ -350,48 +339,13 @@ montarEndereco(bloco);
 
 
 
-bloco.addEventListener("keydown",(e)=>{
-
-
-if(e.key==="Enter"){
-
-
-e.preventDefault();
-
-
-if(e.target===cep){
-
-numero.focus();
-
-}
-else if(e.target===numero){
-
-complemento.focus();
-
-}
-else if(e.target===complemento){
-
-criarLinha();
-
-}
-
-
-}
-
-
-});
-
-
-
 excluir.addEventListener("click",()=>{
-
 
 bloco.remove();
 
 renumerarSequencia();
 
 salvarDados();
-
 
 });
 
@@ -403,19 +357,14 @@ salvarDados();
 
 function renumerarSequencia(){
 
-
 document.querySelectorAll(".bloco-endereco")
-
 .forEach((bloco,index)=>{
-
 
 bloco.querySelector(".sequencia").value =
 
 String(index+1).padStart(3,"0");
 
-
 });
-
 
 }
 
@@ -426,7 +375,7 @@ function buscarCEP(cep,bloco){
 
 
 status.innerHTML =
-"Buscando endereço...";
+"Buscando endereco...";
 
 
 
@@ -445,13 +394,10 @@ fetch(
 
 if(dados.erro){
 
-
 status.innerHTML =
-"CEP não encontrado";
-
+"CEP nao encontrado";
 
 return;
-
 
 }
 
@@ -482,8 +428,7 @@ montarEndereco(bloco);
 
 
 status.innerHTML =
-"✔ Endereço encontrado";
-
+"Endereco encontrado";
 
 
 salvarDados();
@@ -494,16 +439,13 @@ salvarDados();
 
 .catch(()=>{
 
-
 status.innerHTML =
 "Erro ao consultar CEP";
-
 
 });
 
 
 }
-
 
 
 
@@ -551,13 +493,11 @@ texto += ", " + numero;
 }
 
 
-
 if(complemento){
 
 texto += ", " + complemento;
 
 }
-
 
 
 if(bairro){
@@ -567,13 +507,11 @@ texto += " - " + bairro;
 }
 
 
-
 if(cidade){
 
 texto += ", " + cidade;
 
 }
-
 
 
 if(uf){
@@ -586,11 +524,22 @@ texto += " - " + uf;
 
 bloco.querySelector(".endereco").innerText =
 
-texto || "Aguardando CEP...";
+texto || "Aguardando CEP";
+
 
 
 salvarDados();
 
+}
+
+
+
+
+function removerAcentos(texto){
+
+return texto
+.normalize("NFD")
+.replace(/[\u0300-\u036f]/g,"");
 
 }
 
@@ -650,7 +599,6 @@ uf:
 
 bloco.dataset.uf || ""
 
-
 });
 
 
@@ -668,7 +616,20 @@ JSON.stringify(dados)
 
 
 }
-    // Exportar CSV para Circuit
+    // Botao adicionar linha
+
+btnAdicionar.addEventListener(
+"click",
+()=>{
+
+criarLinha();
+
+});
+
+
+
+
+// Exportar CSV para Circuit
 
 btnExportar.addEventListener(
 "click",
@@ -677,7 +638,7 @@ btnExportar.addEventListener(
 
 let csv =
 
-"Sequencia;Destination Address;Bairro;City;Zipcode/Postal code\n";
+"Sequencia;Destination Address;Bairro;City;Zipcode Postal code\n";
 
 
 
@@ -719,13 +680,14 @@ bloco.querySelector(".cep")
 
 
 
-if(endereco && 
+if(endereco &&
+
 !endereco.includes("Aguardando")){
 
 
 csv +=
 
-sequencia.replace(/;/g," ")
+removerAcentos(sequencia)
 
 +
 
@@ -733,7 +695,7 @@ sequencia.replace(/;/g," ")
 
 +
 
-endereco.replace(/;/g," ")
+removerAcentos(endereco)
 
 +
 
@@ -741,7 +703,7 @@ endereco.replace(/;/g," ")
 
 +
 
-bairro.replace(/;/g," ")
+removerAcentos(bairro)
 
 +
 
@@ -749,7 +711,7 @@ bairro.replace(/;/g," ")
 
 +
 
-cidade.replace(/;/g," ")
+removerAcentos(cidade)
 
 +
 
@@ -757,7 +719,7 @@ cidade.replace(/;/g," ")
 
 +
 
-cep.replace(/;/g," ")
+removerAcentos(cep)
 
 +
 
@@ -772,7 +734,8 @@ cep.replace(/;/g," ")
 
 
 
-// Gerar arquivo sem BOM para evitar ï»¿
+
+// Criar arquivo sem BOM
 
 const blob =
 
@@ -783,8 +746,11 @@ csv
 ],
 
 {
+
 type:
+
 "text/csv;charset=utf-8;"
+
 }
 
 );
@@ -794,6 +760,7 @@ type:
 const link =
 
 document.createElement("a");
+
 
 
 link.href =
@@ -816,10 +783,6 @@ link.click();
 
 
 
-
-// Iniciar sistema
-
-criarLinha();
 
 
 // Carregar dados salvos
@@ -911,19 +874,14 @@ montarEndereco(bloco);
 });
 
 
+
 }
 
 
 
-btnAdicionar.addEventListener(
-"click",
-()=>{
+// iniciar aplicativo
 
 criarLinha();
-
-});
-
-
 
 carregarDados();
 
