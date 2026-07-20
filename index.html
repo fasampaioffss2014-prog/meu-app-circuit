@@ -72,32 +72,46 @@
             rotasExtraidas = [];
             btnExportar.disabled = true;
 
-            const formData = new FormData();
-            formData.append("file", arquivo);
-            formData.append("language", "por");
-            formData.append("isOverlayRequired", "false");
-            formData.append("isTable", "false");
-            formData.append("scale", "true"); 
+            // Converte para Base64 para evitar bloqueios de envio do celular
+            const leitor = new FileReader();
+            leitor.onloadend = function() {
+                const base64Imagem = leitor.result;
 
-            fetch("https://api.ocr.space/parse/image", {
-                method: "POST",
-                headers: { "apikey": K_API },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(resultado => {
-                if (resultado && resultado.ParsedResults && resultado.ParsedResults[0]) {
-                    const textoExtraido = resultado.ParsedResults[0].ParsedText;
-                    processarTextoAvancado(textoExtraido);
-                } else {
-                    statusDiv.textContent = "Erro ao processar imagem. Tente de novo.";
-                }
-            })
-            .catch(erro => {
-                console.error(erro);
-                statusDiv.textContent = "Erro na conexão com o servidor de leitura.";
-            });
+                const formData = new FormData();
+                formData.append("base64Image", base64Imagem);
+                formData.append("language", "por");
+                formData.append("scale", "true"); 
+
+                fetch("https://api.ocr.space/parse/image", {
+                    method: "POST",
+                    headers: { "apikey": K_API },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(resultado => {
+                    if (resultado && resultado.ParsedResults && resultado.ParsedResults[0]) {
+                        const textoExtraido = resultado.ParsedResults[0].ParsedText;
+                        processarTextoAvancado(textoExtraido);
+                    } else {
+                        // Se der erro na API, cria a linha manual para você não travar o trabalho
+                        statusDiv.textContent = "Erro na resposta automática. Use a linha abaixo manualmente.";
+                        criarLinhaVaziaEMitigar();
+                    }
+                })
+                .catch(erro => {
+                    console.error(erro);
+                    statusDiv.textContent = "Erro de conexão. Criamos uma linha editável para você.";
+                    criarLinhaVaziaEMitigar();
+                });
+            };
+            leitor.readAsDataURL(arquivo);
         });
+
+        function criarLinhaVaziaEMitigar() {
+            tabelaCorpo.innerHTML = "";
+            adicionarLinhaNaTabela({ Name: proximoId++, Address: "", PostalCode: "" });
+            btnExportar.disabled = false;
+        }
 
         function processarTextoAvancado(texto) {
             const linhas = texto.split('\n');
@@ -122,7 +136,7 @@
             if (!enderecoEncontrado) {
                 linhas.forEach(linha => {
                     if (linha.toLowerCase().includes("palmeiras") || /centro/i.test(linha)) {
-                        enderecoEncontrado = linha.trim();
+                        enderecoEncontrado = line.trim();
                     }
                 });
             }
@@ -136,12 +150,11 @@
                 rotasExtraidas.push(novaRota);
                 adicionarLinhaNaTabela(novaRota);
                 
-                statusDiv.textContent = "Leitura concluída! Toque no texto para ajustar se precisar.";
+                statusDiv.textContent = "Leitura concluída! Ajuste se necessário.";
                 btnExportar.disabled = false;
             } else {
-                statusDiv.textContent = "Não conseguimos isolar a rua. Criamos uma linha editável para você.";
-                adicionarLinhaNaTabela({ Name: proximoId++, Address: "", PostalCode: "" });
-                btnExportar.disabled = false;
+                statusDiv.textContent = "Dados não identificados automaticamente. Use a linha abaixo.";
+                criarLinhaVaziaEMitigar();
             }
         }
 
