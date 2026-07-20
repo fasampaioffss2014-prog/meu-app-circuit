@@ -34,7 +34,7 @@
         <div id="status">Insira os dados. Avance usando a tecla Enter ou Próximo.</div>
 
         <div id="lista-linhas">
-            <!-- Gerado dinamicamente -->
+            <!-- As linhas de endereço entram aqui dinamicamente -->
         </div>
 
         <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
@@ -46,8 +46,9 @@
         const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
 
-        // Registro global necessário para o funcionamento do motor de busca sem bloqueios
-        window.bancosCepsAtivos = {};
+        function obterTextoLimpo(texto) {
+            return texto.replace(/\n/g, '').replace(/\r/g, '').replace(/\s+/g, ' ').trim();
+        }
 
         function criarNovaLinha() {
             const idLinha = 'linha_' + Math.random().toString(36).substr(2, 9);
@@ -84,7 +85,6 @@
 
             inputPacote.focus();
 
-            // Formata o CEP e dispara a busca infalível ao atingir os 8 números
             inputCep.addEventListener('input', (e) => {
                 let v = e.target.value.replace(/\D/g, '');
                 if (v.length > 8) v = v.slice(0, 8);
@@ -100,14 +100,12 @@
                 }
             });
 
-            // Atualiza dinamicamente se o usuário alterar o complemento (Ex: casa 54)
             inputComplemento.addEventListener('input', () => {
                 if (bloco.getAttribute('data-rua-base')) {
                     montarEnderecoFinal(bloco);
                 }
             });
 
-            // Motor de navegação nativo (Enter = Tab)
             bloco.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -122,15 +120,12 @@
             });
         }
 
-        // SOLUÇÃO DO ERRO DE CONEXÃO: Carrega os dados usando injeção direta de Script (JSONP). Zero bloqueios de segurança!
         function buscarCepSemBloqueio(cep, idLinha) {
             document.getElementById('status').innerText = "Buscando localização da rua...";
             
-            // Remove scripts antigos criados anteriormente para limpar memória do celular
             const scriptAntigo = document.getElementById('script_busca_' + idLinha);
             if (scriptAntigo) scriptAntigo.remove();
 
-            // Cria uma função única na memória global para receber os dados desse CEP específico
             const nomeCallback = 'callback_' + idLinha;
             window[nomeCallback] = function(dados) {
                 const bloco = document.getElementById(idLinha);
@@ -152,12 +147,13 @@
                     bloco.removeAttribute('data-rua-base');
                 }
                 
-                // Limpeza da função temporária
-                delete window[nomeCallback];
-                document.getElementById('script_busca_' + idLinha).remove();
+                try {
+                    delete window[nomeCallback];
+                    const scr = document.getElementById('script_busca_' + idLinha);
+                    if (scr) scr.remove();
+                } catch(e) {}
             };
 
-            // Injeta o elemento script seguro diretamente na página para forçar o celular a ler a resposta
             const script = document.createElement('script');
             script.id = 'script_busca_' + idLinha;
             script.src = `https://viacep.com.br{cep}/json/?callback=${nomeCallback}`;
@@ -166,14 +162,13 @@
 
         function montarEnderecoFinal(bloco) {
             const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
-            const complemento = bloco.querySelector('.campo-complemento').value.trim();
+            const complemento = obterTextoLimpo(bloco.querySelector('.campo-complemento').value);
             
             const rua = bloco.getAttribute('data-rua-base');
             const bairro = bloco.getAttribute('data-bairro');
             const city = bloco.getAttribute('data-cidade');
             const uf = bloco.getAttribute('data-estado');
 
-            // Formatação oficial estável estruturada direto para alimentar o Circuit
             let formatado = rua;
             if (complemento) formatado += `, ${complemento}`;
             if (bairro) formatado += ` - ${bairro}`;
@@ -183,7 +178,7 @@
             campoTextoCompleto.innerText = formatado;
         }
 
-        // Inicializa o primeiro bloco na tela
+        // Inicializa a primeira caixinha na tela automaticamente
         criarNovaLinha();
 
         btnAdicionar.addEventListener('click', criarNovaLinha);
@@ -193,8 +188,8 @@
             let conteudoCsv = "Name;Address\n";
 
             blocos.forEach(bloco => {
-                const pacote = bloco.querySelector('.campo-pacote').value.trim();
-                const endereco = bloco.querySelector('.campo-endereco-completo').innerText.trim();
+                const pacote = obterTextoLimpo(bloco.querySelector('.campo-pacote').value);
+                const endereco = obterTextoLimpo(bloco.querySelector('.campo-endereco-completo').innerText);
 
                 if (pacote || (endereco && !endereco.includes("Aguardando"))) {
                     const pacoteLimpo = pacote.replace(/;/g, ' ');
@@ -204,4 +199,13 @@
             });
 
             const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), conteudoCsv], { type: 'text/csv;charset=utf-8;' });
-        
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "rotas_circuit.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
+</body>
+</html>
