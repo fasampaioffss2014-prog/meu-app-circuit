@@ -4,751 +4,241 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Circuito Alimentador</title>
+<title>Organizador de Entregas</title>
 
 <style>
-
-body{
-    font-family:Arial,sans-serif;
-    background:#121212;
-    color:#e0e0e0;
-    padding:15px;
-    max-width:650px;
-    margin:auto;
+body {
+    font-family: Arial, sans-serif;
+    background: #121212;
+    color: white;
+    margin: 0;
+    padding: 20px;
 }
 
-.container{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:10px;
-    box-shadow:0 4px 10px #000;
+.container {
+    max-width: 600px;
+    margin: auto;
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 15px;
 }
 
-h2{
-    text-align:center;
-    color:#a855f7;
+h1 {
+    text-align: center;
 }
 
-#status{
-    text-align:center;
-    color:#a855f7;
-    font-size:14px;
-    min-height:25px;
+button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 10px;
+    background: #008cff;
+    color: white;
+    font-size: 16px;
 }
 
-.bloco-endereco{
-    border-bottom:1px solid #333;
-    padding:15px 0;
+input {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: none;
 }
 
-.grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
+.resultado {
+    margin-top: 20px;
+    background: #292929;
+    padding: 15px;
+    border-radius: 10px;
 }
-
-label{
-    color:#a855f7;
-    font-size:12px;
-    font-weight:bold;
-}
-
-input{
-    width:100%;
-    box-sizing:border-box;
-    margin-top:5px;
-    padding:10px;
-    border-radius:6px;
-    border:1px solid #444;
-    background:#29292e;
-    color:white;
-    font-size:14px;
-}
-
-input:focus{
-    border-color:#a855f7;
-    outline:none;
-}
-
-.resultado{
-    margin-top:12px;
-    padding:12px;
-    background:#151515;
-    border:1px dashed #a855f7;
-    border-radius:6px;
-    font-size:14px;
-}
-
-.endereco{
-    display:block;
-    color:white;
-    margin-top:5px;
-}
-
-.btn{
-    width:100%;
-    padding:12px;
-    margin-top:12px;
-    border:none;
-    border-radius:7px;
-    font-size:16px;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-.adicionar{
-    background:#202024;
-    color:#a855f7;
-    border:1px solid #a855f7;
-}
-
-.exportar{
-    background:#e1e1e6;
-    color:#121212;
-}
-
-.excluir{
-    background:#7f1d1d;
-    color:white;
-    margin-top:10px;
-    font-size:13px;
-}
-
-.sucesso{
-    color:#22c55e;
-}
-
-.erro{
-    color:#ef4444;
-}
-
 </style>
 
 </head>
-
 
 <body>
 
 <div class="container">
 
-<h2>
-Circuito Alimentador 📦
-</h2>
+<h1>Organizador de Entregas</h1>
 
-<div id="status">
-Digite os dados da etiqueta
-</div>
+<input type="file" id="arquivo" accept="image/*">
 
-
-<div id="lista">
-
-</div>
-
-
-<button class="btn adicionar" id="adicionar">
-+ Adicionar Nova Linha
+<button onclick="lerEtiqueta()">
+Ler Etiqueta
 </button>
 
+<div class="resultado" id="resultado">
+Aguardando leitura...
+</div>
 
-<button class="btn exportar" id="exportar">
-Baixar CSV para Circuit
+<button onclick="exportarPlanilha()">
+Exportar Planilha
 </button>
 
-
 </div>
+
+
 <script>
 
-const lista = document.getElementById("lista");
-const btnAdicionar = document.getElementById("adicionar");
-const btnExportar = document.getElementById("exportar");
-const status = document.getElementById("status");
+let entregas = [];
 
 
-// Criar nova linha de entrega
-function criarLinha(){
+function lerEtiqueta(){
 
-    const bloco = document.createElement("div");
-    bloco.className = "bloco-endereco";
+    // leitura da etiqueta será integrada aqui
 
+    let dados = {
+        "Destination Address": "",
+        "Bairro": "",
+        "City": "",
+        "Zipcode/Postal code": ""
+    };
 
-    bloco.innerHTML = `
+    entregas.push(dados);
 
-    <div class="grid">
+    document.getElementById("resultado").innerHTML =
+    "Etiqueta processada";
 
-        <div>
-            <label>Pacote / Nome</label>
-            <input 
-            type="text" 
-            class="pacote"
-            placeholder="Ex: Pacote 01">
-        </div>
-
-
-        <div>
-            <label>CEP</label>
-            <input 
-            type="text"
-            class="cep"
-            inputmode="numeric"
-            maxlength="9"
-            placeholder="00000-000">
-        </div>
+}
 
 
-        <div>
-            <label>Número</label>
-            <input 
-            type="text"
-            class="numero"
-            placeholder="Ex: 150">
-        </div>
+</script>
+// ===============================
+// PROCESSAMENTO DOS DADOS
+// ===============================
+
+function adicionarEntrega(endereco, bairro, cidade, cep){
+
+    let entrega = {
+
+        "Destination Address": endereco,
+
+        "Bairro": bairro,
+
+        "City": cidade,
+
+        "Zipcode/Postal code": cep
+
+    };
 
 
-        <div>
-            <label>Complemento</label>
-            <input 
-            type="text"
-            class="complemento"
-            placeholder="Casa, bloco, apto">
-        </div>
+    entregas.push(entrega);
 
 
-    </div>
+    document.getElementById("resultado").innerHTML =
+    `
+    <strong>Entrega adicionada:</strong><br><br>
 
-
-    <div class="resultado">
-
-        Endereço Circuit:
-
-        <strong class="endereco">
-        Aguardando CEP...
-        </strong>
-
-    </div>
-
-
-    <button class="btn excluir">
-    Remover linha
-    </button>
-
-
+    Destination Address: ${endereco}<br>
+    Bairro: ${bairro}<br>
+    City: ${cidade}<br>
+    Zipcode/Postal code: ${cep}
     `;
 
+}
 
-    lista.appendChild(bloco);
 
 
+// ===============================
+// EXEMPLO DE TESTE
+// ===============================
 
-    const pacote = bloco.querySelector(".pacote");
-    const cep = bloco.querySelector(".cep");
-    const numero = bloco.querySelector(".numero");
-    const complemento = bloco.querySelector(".complemento");
-    const endereco = bloco.querySelector(".endereco");
-    const excluir = bloco.querySelector(".excluir");
+function testeEtiqueta(){
 
-
-
-    pacote.focus();
-
-
-
-    // Formatação automática CEP
-
-    cep.addEventListener("input",()=>{
-
-        let valor = cep.value.replace(/\D/g,"");
-
-
-        if(valor.length > 8){
-            valor = valor.substring(0,8);
-        }
-
-
-        if(valor.length > 5){
-
-            cep.value =
-            valor.substring(0,5)
-            +
-            "-"
-            +
-            valor.substring(5);
-
-        }else{
-
-            cep.value = valor;
-
-        }
-
-
-        if(valor.length===8){
-
-            buscarCEP(valor,bloco);
-
-        }
-
-
-    });
-
-
-
-    complemento.addEventListener("input",()=>{
-
-        montarEndereco(bloco);
-
-    });
-
-
-
-    numero.addEventListener("input",()=>{
-
-        montarEndereco(bloco);
-
-    });
-
-
-
-    // Navegação usando ENTER
-
-    bloco.addEventListener("keydown",(e)=>{
-
-
-        if(e.key==="Enter"){
-
-            e.preventDefault();
-
-
-            if(e.target===pacote){
-
-                cep.focus();
-
-            }
-            else if(e.target===cep){
-
-                numero.focus();
-
-            }
-            else if(e.target===numero){
-
-                complemento.focus();
-
-            }
-            else if(e.target===complemento){
-
-                criarLinha();
-
-            }
-
-
-        }
-
-
-    });
-
-
-
-    excluir.addEventListener("click",()=>{
-
-        bloco.remove();
-
-        salvarDados();
-
-    });
-
+    adicionarEntrega(
+        "Rua Exemplo, 100",
+        "Centro",
+        "Rio de Janeiro",
+        "20000-000"
+    );
 
 }
 
 
 
-// Buscar CEP ViaCEP
+// ===============================
+// GERAR DADOS PARA PLANILHA
+// ===============================
 
-function buscarCEP(cep,bloco){
+function prepararPlanilha(){
 
+    let linhas = [];
 
-    status.innerHTML =
-    "🔎 Buscando endereço...";
+    entregas.forEach(item => {
 
+        linhas.push({
 
-    fetch(
-    `https://viacep.com.br/ws/${cep}/json/`
-    )
+            "Destination Address":
+            item["Destination Address"],
 
+            "Bairro":
+            item["Bairro"],
 
-    .then(res=>res.json())
+            "City":
+            item["City"],
 
-
-    .then(dados=>{
-
-
-        if(dados.erro){
-
-
-            status.innerHTML =
-            "<span class='erro'>CEP não encontrado</span>";
-
-            return;
-
-        }
-
-
-
-        bloco.dataset.rua =
-        dados.logradouro || "";
-
-
-        bloco.dataset.bairro =
-        dados.bairro || "";
-
-
-        bloco.dataset.cidade =
-        dados.localidade || "";
-
-
-        bloco.dataset.uf =
-        dados.uf || "";
-
-
-
-        montarEndereco(bloco);
-
-
-
-        status.innerHTML =
-        "<span class='sucesso'>✔ Endereço encontrado</span>";
-
-
-
-        salvarDados();
-
-
-
-    })
-
-
-    .catch(()=>{
-
-
-        status.innerHTML =
-        "<span class='erro'>Erro ao consultar CEP</span>";
-
-
-    });
-
-
-
-}
-
-
-
-// Montar endereço padrão Circuit
-
-function montarEndereco(bloco){
-
-
-    const rua = bloco.dataset.rua || "";
-
-    const bairro = bloco.dataset.bairro || "";
-
-    const cidade = bloco.dataset.cidade || "";
-
-    const uf = bloco.dataset.uf || "";
-
-
-    const numero =
-    bloco.querySelector(".numero").value.trim();
-
-
-    const complemento =
-    bloco.querySelector(".complemento").value.trim();
-
-
-
-    let texto = rua;
-
-
-    if(numero){
-
-        texto += ", " + numero;
-
-    }
-
-
-    if(complemento){
-
-        texto += ", " + complemento;
-
-    }
-
-
-    if(bairro){
-
-        texto += " - " + bairro;
-
-    }
-
-
-    if(cidade){
-
-        texto += ", " + cidade;
-
-    }
-
-
-    if(uf){
-
-        texto += " - " + uf;
-
-    }
-
-
-
-    bloco.querySelector(".endereco").innerText =
-    texto || "Aguardando CEP...";
-
-
-    salvarDados();
-
-
-}
-
-
-
-// Criar primeira linha
-
-criarLinha();
-
-// Salvar dados automaticamente no navegador
-
-function salvarDados(){
-
-    const dados = [];
-
-    document.querySelectorAll(".bloco-endereco")
-    .forEach(bloco=>{
-
-        dados.push({
-
-            pacote:
-            bloco.querySelector(".pacote").value,
-
-            cep:
-            bloco.querySelector(".cep").value,
-
-            numero:
-            bloco.querySelector(".numero").value,
-
-            complemento:
-            bloco.querySelector(".complemento").value,
-
-            rua:
-            bloco.dataset.rua || "",
-
-            bairro:
-            bloco.dataset.bairro || "",
-
-            cidade:
-            bloco.dataset.cidade || "",
-
-            uf:
-            bloco.dataset.uf || ""
+            "Zipcode/Postal code":
+            item["Zipcode/Postal code"]
 
         });
 
-
     });
 
 
-    localStorage.setItem(
-        "rotas_circuit",
-        JSON.stringify(dados)
-    );
+    return linhas;
+    // ===============================
+// EXPORTAR PLANILHA EXCEL
+// ===============================
 
-}
+function exportarPlanilha(){
 
+    if(entregas.length === 0){
 
-
-// Carregar dados salvos
-
-function carregarDados(){
-
-    const dados =
-    JSON.parse(
-        localStorage.getItem("rotas_circuit")
-    );
-
-
-    if(!dados || dados.length===0){
+        alert("Nenhuma entrega cadastrada.");
 
         return;
-
     }
 
 
-
-    lista.innerHTML="";
-
+    let dados = prepararPlanilha();
 
 
-    dados.forEach(item=>{
+    let ws = XLSX.utils.json_to_sheet(dados);
 
 
-        criarLinha();
+    let wb = XLSX.utils.book_new();
 
 
-        const bloco =
-        lista.lastElementChild;
+    XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        "Entregas"
+    );
 
 
-        bloco.querySelector(".pacote").value =
-        item.pacote;
-
-
-        bloco.querySelector(".cep").value =
-        item.cep;
-
-
-        bloco.querySelector(".numero").value =
-        item.numero;
-
-
-        bloco.querySelector(".complemento").value =
-        item.complemento;
-
-
-
-        bloco.dataset.rua =
-        item.rua;
-
-
-        bloco.dataset.bairro =
-        item.bairro;
-
-
-        bloco.dataset.cidade =
-        item.cidade;
-
-
-        bloco.dataset.uf =
-        item.uf;
-
-
-
-        montarEndereco(bloco);
-
-
-
-    });
-
+    XLSX.writeFile(
+        wb,
+        "Entregas_Organizadas.xlsx"
+    );
 
 }
 
 
 
-
-// Botão adicionar
-
-btnAdicionar.addEventListener(
-"click",
-()=>{
-
-    criarLinha();
-
-});
-
-
-
-
-// Exportar CSV para Circuit
-
-btnExportar.addEventListener(
-"click",
-()=>{
-
-
-    let csv =
-    "Name;Address\n";
-
-
-
-    document.querySelectorAll(".bloco-endereco")
-    .forEach(bloco=>{
-
-
-        const nome =
-        bloco.querySelector(".pacote")
-        .value.trim();
-
-
-
-        const endereco =
-        bloco.querySelector(".endereco")
-        .innerText.trim();
-
-
-
-        if(nome && endereco &&
-        !endereco.includes("Aguardando")){
-
-
-            csv +=
-            nome.replace(/;/g," ")
-            +
-            ";"
-            +
-            endereco.replace(/;/g," ")
-            +
-            "\n";
-
-
-        }
-
-
-    });
-
-
-
-    // Corrige acentos no Excel
-
-    const blob =
-    new Blob(
-    [
-        "\ufeff",
-        csv
-    ],
-    {
-        type:
-        "text/csv;charset=utf-8;"
-    });
-
-
-
-    const link =
-    document.createElement("a");
-
-
-    link.href =
-    URL.createObjectURL(blob);
-
-
-    link.download =
-    "rotas_circuit.csv";
-
-
-    link.click();
-
-
-
-});
-
-
-
-// Carrega informações ao abrir
-
-carregarDados();
-
+// ===============================
+// CARREGAR BIBLIOTECA XLSX
+// ===============================
 
 </script>
 
 
-</body>
+<script 
+src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+</script>
 
+
+</body>
 </html>
+
+}
