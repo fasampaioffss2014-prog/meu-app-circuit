@@ -125,12 +125,34 @@
             document.getElementById('status').innerText = txt;
         }
 
+        // Move a posição do cursor para o fim da célula de edição para evitar bugs visuais
+        function moverCursorParaOFinal(elemento) {
+            const selecao = window.getSelection();
+            const intervalo = document.createRange();
+            intervalo.selectNodeContents(elemento);
+            intervalo.collapse(false);
+            selecao.removeAllRanges();
+            selecao.addRange(intervalo);
+        }
+
         // Escuta as alterações na tabela (CEP ou Complemento)
         tabelaCorpo.addEventListener('input', (e) => {
             const linhaAtual = e.target.parentElement;
             
             if (e.target.classList.contains('campo-cep')) {
-                buscarCep(e.target.innerText, linhaAtual);
+                let texto = e.target.innerText.replace(/\D/g, ''); // Remove tudo que não for número
+                
+                if (texto.length > 8) texto = texto.slice(0, 8); // Trava no limite máximo de 8 dígitos
+                
+                // Aplica a formatação 00000-000 de forma dinâmica
+                if (texto.length > 5) {
+                    e.target.innerText = `${texto.slice(0, 5)}-${texto.slice(5)}`;
+                } else {
+                    e.target.innerText = texto;
+                }
+                
+                moverCursorParaOFinal(e.target);
+                buscarCep(texto, linhaAtual);
             }
             
             if (e.target.classList.contains('campo-complemento')) {
@@ -173,44 +195,19 @@
                     linhaAtual.querySelector('.campo-complemento').focus();
                 } 
                 else if (celulaAtual.classList.contains('campo-complemento')) {
-                    let proximaLinha = linhaAtual.nextElementSibling;
-                    
-                    if (!proximaLinha) {
-                        proximaLinha = adicionarNovaLinha();
-                    }
-                    
-                    proximaLinha.querySelector('.campo-pacote').focus();
+                    const novaLinha = adicionarNovaLinha();
+                    novaLinha.querySelector('.campo-pacote').focus();
                 }
             }
         });
 
-        // Gera o CSV combinando o endereço final gerado
+        // Lógica para exportação do CSV
         btnExportar.addEventListener('click', () => {
-            let csvContent = "data:text/csv;charset=utf-8,Name,Address,Postal Code\n";
-            const linhasTabela = tabelaCorpo.querySelectorAll('tr');
-            let temDados = false;
-            
-            linhasTabela.forEach(linha => {
-                const colunas = linha.querySelectorAll('td');
-                if(colunas.length === 4) {
-                    const name = colunas[0].innerText.trim();
-                    const postalCode = colunas[1].innerText.trim().replace('-', '');
-                    const address = colunas[3].innerText.trim().replace(/"/g, '""');
-                    
-                    if (name || address || postalCode) {
-                        csvContent += `"${name}","${address}","${postalCode}"\n`;
-                        temDados = true;
-                    }
-                }
-            });
+            const linhas = tabelaCorpo.querySelectorAll('tr');
+            let conteudoCsv = "Pacote;CEP;Complemento;Endereco\n";
 
-            if (!temDados) {
-                alert("Insira dados antes de baixar o arquivo.");
-                return;
-            }
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "rotas_circuit.csv");
-            
+            linhas.forEach(linha => {
+                const pacote = linha.querySelector('.campo-pacote').innerText.trim();
+                const cep = linha.querySelector('.campo-cep').innerText.trim();
+                const complemento = linha.querySelector('.campo-complemento').innerText.trim();
+                
