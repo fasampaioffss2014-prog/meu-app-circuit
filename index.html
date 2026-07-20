@@ -59,7 +59,6 @@
         const containerMapa = document.getElementById('container-mapa');
         const mapaGoogle = document.getElementById('mapa-google');
 
-        // Atualiza o mapa combinando todos os endereços válidos da tabela
         function atualizarMapaGeral() {
             const linhas = tabelaCorpo.querySelectorAll('tr');
             let listaEnderecos = [];
@@ -93,13 +92,13 @@
             }
         }
 
-        // Busca o CEP e salva a rua base na tabela
-        function buscarCep(cep, linha) {
-            const cepLimpo = cep.trim().replace('-', '').replace(/\s/g, '');
+        function buscarCep(linha) {
+            const celulaCep = linha.querySelector('.campo-cep');
+            const cepLimpo = celulaCep.innerText.trim().replace(/\D/g, '');
             const celulaEndereco = linha.querySelector('.campo-endereco-completo');
             const complemento = linha.querySelector('.campo-complemento').innerText.trim();
             
-            if (cepLimpo.length === 8 && /^\d+$/.test(cepLimpo)) {
+            if (cepLimpo.length === 8) {
                 statusDivText("Buscando CEP...");
                 
                 fetch(`https://viacep.com.br{cepLimpo}/json/`)
@@ -109,10 +108,12 @@
                         const ruaBase = `${dados.logradouro}, ${dados.bairro} - ${dados.localidade}`;
                         celulaEndereco.setAttribute('data-rua', ruaBase);
                         celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
-                        statusDivText("Endereço adicionado ao circuito!");
+                        statusDivText("Endereço adicionado!");
                         atualizarMapaGeral();
                     } else {
                         statusDivText("CEP não encontrado.");
+                        celulaEndereco.innerText = "";
+                        celulaEndereco.removeAttribute('data-rua');
                     }
                 })
                 .catch(() => {
@@ -125,34 +126,27 @@
             document.getElementById('status').innerText = txt;
         }
 
-        // Move a posição do cursor para o fim da célula de edição para evitar bugs visuais
-        function moverCursorParaOFinal(elemento) {
-            const selecao = window.getSelection();
-            const intervalo = document.createRange();
-            intervalo.selectNodeContents(elemento);
-            intervalo.collapse(false);
-            selecao.removeAllRanges();
-            selecao.addRange(intervalo);
-        }
+        // Formatação simples do CEP ao perder o foco ou digitar
+        tabelaCorpo.addEventListener('focusout', (e) => {
+            const linhaAtual = e.target.parentElement;
+            if (e.target.classList.contains('campo-cep')) {
+                let texto = e.target.innerText.replace(/\D/g, '');
+                if (texto.length === 8) {
+                    e.target.innerText = `${texto.slice(0, 5)}-${texto.slice(5)}`;
+                }
+                buscarCep(linhaAtual);
+            }
+        });
 
-        // Escuta as alterações na tabela (CEP ou Complemento)
+        // Escuta digitação para atualizar dinamicamente o complemento
         tabelaCorpo.addEventListener('input', (e) => {
             const linhaAtual = e.target.parentElement;
             
             if (e.target.classList.contains('campo-cep')) {
-                let texto = e.target.innerText.replace(/\D/g, ''); // Remove tudo que não for número
-                
-                if (texto.length > 8) texto = texto.slice(0, 8); // Trava no limite máximo de 8 dígitos
-                
-                // Aplica a formatação 00000-000 de forma dinâmica
-                if (texto.length > 5) {
-                    e.target.innerText = `${texto.slice(0, 5)}-${texto.slice(5)}`;
-                } else {
-                    e.target.innerText = texto;
+                let texto = e.target.innerText.replace(/\D/g, '');
+                if (texto.length === 8) {
+                    buscarCep(linhaAtual);
                 }
-                
-                moverCursorParaOFinal(e.target);
-                buscarCep(texto, linhaAtual);
             }
             
             if (e.target.classList.contains('campo-complemento')) {
@@ -167,7 +161,6 @@
             }
         });
 
-        // Cria nova linha dinamicamente
         function adicionarNovaLinha() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -180,10 +173,10 @@
             return tr;
         }
 
-        // Controla o fluxo de teclas (Enter para mudar de caixa)
+        // Manipulação unificada do Enter (independente do teclado mobile/desktop)
         tabelaCorpo.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Impede a quebra de linha interna das células
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
                 
                 const celulaAtual = e.target;
                 const linhaAtual = celulaAtual.parentElement;
@@ -192,6 +185,7 @@
                     linhaAtual.querySelector('.campo-cep').focus();
                 } 
                 else if (celulaAtual.classList.contains('campo-cep')) {
+                    buscarCep(linhaAtual);
                     linhaAtual.querySelector('.campo-complemento').focus();
                 } 
                 else if (celulaAtual.classList.contains('campo-complemento')) {
@@ -201,13 +195,21 @@
             }
         });
 
-        // Lógica para exportação do CSV
         btnExportar.addEventListener('click', () => {
             const linhas = tabelaCorpo.querySelectorAll('tr');
             let conteudoCsv = "Pacote;CEP;Complemento;Endereco\n";
 
             linhas.forEach(linha => {
-                const pacote = linha.querySelector('.campo-pacote').innerText.trim();
+                const pacote = Board = linha.querySelector('.campo-pacote').innerText.trim();
                 const cep = linha.querySelector('.campo-cep').innerText.trim();
                 const complemento = linha.querySelector('.campo-complemento').innerText.trim();
-                
+                const endereco = linha.querySelector('.campo-endereco-completo').innerText.trim();
+
+                if (pacote || cep || endereco) {
+                    conteudoCsv += `${pacote};${cep};${complemento};${endereco}\n`;
+                }
+            });
+
+            const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+        
