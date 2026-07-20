@@ -18,23 +18,21 @@
         th { background-color: #202024; color: #a855f7; }
         td[contenteditable="true"] { background-color: #29292e; border: 1px solid #a855f7; color: #ffffff; min-width: 50px; }
         .bloqueado { background-color: #151515; color: #888; cursor: not-allowed; }
-        .map-container { margin-top: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #29292e; background-color: #202024; display: none; }
-        iframe { width: 100%; height: 350px; border: 0; display: block; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h2>Circuito Alimentador 📋</h2>
-        <div id="status">Digite o CEP para buscar a rua, depois insira o complemento!</div>
+        <div id="status">Insira os dados. Pressione Enter para navegar.</div>
 
         <table id="tabela-rotas">
             <thead>
                 <tr>
-                    <th>Pacote</th>
+                    <th>Pacote / Nome</th>
                     <th>CEP</th>
-                    <th>Complemento (Nº/Ap)</th>
-                    <th>Endereço Completo</th>
+                    <th>Complemento</th>
+                    <th>Endereço Completo (Circuit)</th>
                 </tr>
             </thead>
             <tbody>
@@ -47,66 +45,30 @@
             </tbody>
         </table>
 
-        <!-- NOVO: Botão explícito para adicionar nova linha manualmente -->
         <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
-
         <button id="btn-exportar" class="btn btn-export">Baixar CSV para o Circuit</button>
-
-        <!-- Área do Mapa Multi-Pontos -->
-        <div class="map-container" id="container-mapa">
-            <iframe id="mapa-google" src=""></iframe>
-        </div>
     </div>
 
     <script>
         const tabelaCorpo = document.querySelector('#tabela-rotas tbody');
         const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
-        const containerMapa = document.getElementById('container-mapa');
-        const mapaGoogle = document.getElementById('mapa-google');
 
-        function atualizarMapaGeral() {
-            const linhas = tabelaCorpo.querySelectorAll('tr');
-            let listaEnderecos = [];
-
-            linhas.forEach(linha => {
-                const celulaEndereco = linha.querySelector('.campo-endereco-completo');
-                const enderecoTexto = celulaEndereco ? celulaEndereco.innerText.trim() : '';
-                
-                if (enderecoTexto) {
-                    listaEnderecos.push(encodeURIComponent(enderecoTexto));
-                }
-            });
-
-            if (listaEnderecos.length > 0) {
-                if (listaEnderecos.length === 1) {
-                    mapaGoogle.src = `https://google.com{listaEnderecos[0]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
-                } else {
-                    const origem = listaEnderecos[0];
-                    const destino = listaEnderecos[listaEnderecos.length - 1];
-                    const intermediarios = listaEnderecos.slice(1, -1).join('|');
-
-                    let urlMapa = `https://google.com{origem}&daddr=${destino}`;
-                    if (intermediarios) {
-                        urlMapa += `+to:${intermediarios}`;
-                    }
-                    urlMapa += `&t=&z=13&ie=UTF8&iwloc=&output=embed`;
-                    
-                    mapaGoogle.src = urlMapa;
-                }
-                containerMapa.style.display = 'block';
-            }
+        // Retorna apenas o texto puro e limpo de elementos editáveis no mobile
+        function obterTextoLimpo(elemento) {
+            if (!elemento) return '';
+            return elemento.innerText.replace(/\n/g, '').replace(/\r/g, '').trim();
         }
 
-        // CORREÇÃO DA BUSCA: Filtra rigorosamente espaços e quebras de linha para garantir a execução da API
-        function buscarCep(linha) {
+        // Fundamento 4: Busca na API e monta o endereço completo de forma automática
+        function buscarEAtualizarEndereco(linha) {
             const celulaCep = linha.querySelector('.campo-cep');
-            const cepLimpo = celulaCep.innerText.replace(/\D/g, '').trim();
+            const cepLimpo = obterTextoLimpo(celulaCep).replace(/\D/g, '');
             const celulaEndereco = linha.querySelector('.campo-endereco-completo');
-            const complemento = linha.querySelector('.campo-complemento').innerText.trim();
+            const complemento = obterTextoLimpo(linha.querySelector('.campo-complemento'));
             
             if (cepLimpo.length === 8) {
-                statusDivText("Buscando CEP...");
+                document.getElementById('status').innerText = "Buscando endereço...";
                 
                 fetch(`https://viacep.com.br{cepLimpo}/json/`)
                 .then(res => res.json())
@@ -114,60 +76,51 @@
                     if(!dados.erro) {
                         const ruaBase = `${dados.logradouro}, ${dados.bairro} - ${dados.localidade}`;
                         celulaEndereco.setAttribute('data-rua', ruaBase);
-                        celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
-                        statusDivText("Endereço adicionado!");
-                        atualizarMapaGeral();
+                        // Atualiza a quarta coluna automaticamente combinando Rua + Complemento
+                        celulaEndereco.innerText = complemento ? `${ruaBase}, Nº ${complemento}` : ruaBase;
+                        document.getElementById('status').innerText = "Endereço atualizado!";
                     } else {
-                        statusDivText("CEP não encontrado.");
-                        celulaEndereco.innerText = "Não encontrado";
+                        document.getElementById('status').innerText = "CEP inválido.";
+                        celulaEndereco.innerText = "";
                         celulaEndereco.removeAttribute('data-rua');
                     }
                 })
                 .catch(() => {
-                    statusDivText("Erro de conexão com o ViaCEP.");
+                    document.getElementById('status').innerText = "Erro ao conectar com serviço de CEP.";
                 });
             }
         }
 
-        function statusDivText(txt) {
-            document.getElementById('status').innerText = txt;
-        }
-
-        // Executa a busca ao sair da célula ou ao completar os números
-        tabelaCorpo.addEventListener('focusout', (e) => {
-            const linhaAtual = e.target.parentElement;
-            if (e.target.classList.contains('campo-cep')) {
-                let texto = e.target.innerText.replace(/\D/g, '').trim();
-                if (texto.length === 8) {
-                    e.target.innerText = `${texto.slice(0, 5)}-${texto.slice(5)}`;
-                }
-                buscarCep(linhaAtual);
-            }
-        });
-
-        // Gerencia mudanças dinâmicas no complemento e no CEP
+        // Monitora as alterações nas colunas para atualizar a quarta coluna dinamicamente
         tabelaCorpo.addEventListener('input', (e) => {
             const linhaAtual = e.target.parentElement;
             
             if (e.target.classList.contains('campo-cep')) {
-                let texto = e.target.innerText.replace(/\D/g, '').trim();
-                if (texto.length === 8) {
-                    buscarCep(linhaAtual);
+                const cepLimpo = obterTextoLimpo(e.target).replace(/\D/g, '');
+                if (cepLimpo.length === 8) {
+                    buscarEAtualizarEndereco(linhaAtual);
                 }
             }
             
             if (e.target.classList.contains('campo-complemento')) {
                 const celulaEndereco = linhaAtual.querySelector('.campo-endereco-completo');
                 const ruaBase = celulaEndereco.getAttribute('data-rua');
-                const complemento = e.target.innerText.trim();
+                const complemento = obterTextoLimpo(e.target);
                 
                 if (ruaBase) {
-                    celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
-                    atualizarMapaGeral();
+                    celulaEndereco.innerText = complemento ? `${ruaBase}, Nº ${complemento}` : ruaBase;
                 }
             }
         });
 
+        // Garante a busca caso o usuário mude de coluna no celular tocando na tela
+        tabelaCorpo.addEventListener('focusout', (e) => {
+            if (e.target.classList.contains('campo-cep') || e.target.classList.contains('campo-complemento')) {
+                buscarEAtualizarEndereco(e.target.parentElement);
+            }
+        });
+
+        // Criação de nova linha limpa
         function adicionarNovaLinha() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -180,16 +133,16 @@
             return tr;
         }
 
-        // Vincula a ação do botão físico para gerar a nova linha
+        // Botão manual de Adicionar Nova Linha funcionando
         btnAdicionar.addEventListener('click', () => {
             const novaLinha = adicionarNovaLinha();
             novaLinha.querySelector('.campo-pacote').focus();
         });
 
-        // CORREÇÃO CRÍTICA DO ENTER/TAB: intercepta o evento e simula comportamento nativo do TAB
+        // Comportamento do Enter funcionando estritamente como a tecla Tab (Próxima Célula)
         tabelaCorpo.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.keyCode === 13) {
-                e.preventDefault(); // Impede saltos de linha internos indesejados
+                e.preventDefault(); // Impede a quebra de linha visual dentro da caixa
                 
                 const celulaAtual = e.target;
                 const linhaAtual = celulaAtual.parentElement;
@@ -198,10 +151,42 @@
                     linhaAtual.querySelector('.campo-cep').focus();
                 } 
                 else if (celulaAtual.classList.contains('campo-cep')) {
-                    buscarCep(linhaAtual);
+                    buscarEAtualizarEndereco(linhaAtual);
                     linhaAtual.querySelector('.campo-complemento').focus();
                 } 
                 else if (celulaAtual.classList.contains('campo-complemento')) {
-                    // Limpa quebras de linhas geradas pelo input mobile antes de pular
-                    celulaAtual.innerText = celulaAtual.innerText.replace(/\n/g, '').trim();
-        
+                    const novaLinha = adicionarNovaLinha();
+                    setTimeout(() => {
+                        novaLinha.querySelector('.campo-pacote').focus();
+                    }, 50);
+                }
+            }
+        });
+
+        // Botão de Exportar funcionando corrigido (Sem variáveis corrompidas)
+        btnExportar.addEventListener('click', () => {
+            const linhas = tabelaCorpo.querySelectorAll('tr');
+            let conteudoCsv = "Pacote;CEP;Complemento;Endereco Completo\n";
+
+            linhas.forEach(linha => {
+                const pacote = obterTextoLimpo(linha.querySelector('.campo-pacote'));
+                const cep = obterTextoLimpo(linha.querySelector('.campo-cep'));
+                const complemento = obterTextoLimpo(linha.querySelector('.campo-complemento'));
+                const endereco = obterTextoLimpo(linha.querySelector('.campo-endereco-completo'));
+
+                if (pacote || cep || endereco) {
+                    conteudoCsv += `${pacote};${cep};${complemento};${endereco}\n`;
+                }
+            });
+
+            const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "circuito_alimentador.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
+</body>
+</html>
