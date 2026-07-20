@@ -161,28 +161,21 @@ Baixar CSV para Circuit
 
 <script>
 
-
 const lista =
 document.getElementById("lista");
-
 
 const btnAdicionar =
 document.getElementById("adicionar");
 
-
 const btnExportar =
 document.getElementById("exportar");
-
 
 const status =
 document.getElementById("status");
 
 
 
-// Criar linha de entrega
-
 function criarLinha(){
-
 
 const bloco =
 document.createElement("div");
@@ -190,7 +183,6 @@ document.createElement("div");
 
 bloco.className =
 "bloco-endereco";
-
 
 
 bloco.innerHTML = `
@@ -201,7 +193,7 @@ bloco.innerHTML = `
 
 <div>
 
-<label>Sequência</label>
+<label>Sequencia</label>
 
 <input 
 type="text"
@@ -209,7 +201,6 @@ class="sequencia"
 readonly>
 
 </div>
-
 
 
 <div>
@@ -226,7 +217,6 @@ placeholder="00000-000">
 </div>
 
 
-
 <div>
 
 <label>Número</label>
@@ -237,7 +227,6 @@ class="numero"
 placeholder="Ex: 150">
 
 </div>
-
 
 
 <div>
@@ -255,7 +244,6 @@ placeholder="Casa, bloco, apto">
 </div>
 
 
-
 <div class="resultado">
 
 Endereço Circuit:
@@ -267,7 +255,6 @@ Aguardando CEP...
 </strong>
 
 </div>
-
 
 
 <button class="btn excluir">
@@ -283,15 +270,12 @@ Remover linha
 lista.appendChild(bloco);
 
 
-// sequência automática
-
 const ordem =
 document.querySelectorAll(".bloco-endereco").length;
 
 
 bloco.querySelector(".sequencia").value =
 String(ordem).padStart(3,"0");
-
 
 
 const cep =
@@ -308,16 +292,13 @@ bloco.querySelector(".complemento");
 
 const excluir =
 bloco.querySelector(".excluir");
-
-
-cep.addEventListener("input",()=>{
-
+    cep.addEventListener("input",()=>{
 
 let valor =
 cep.value.replace(/\D/g,"");
 
 
-if(valor.length>8){
+if(valor.length > 8){
 
 valor =
 valor.substring(0,8);
@@ -325,7 +306,7 @@ valor.substring(0,8);
 }
 
 
-if(valor.length>5){
+if(valor.length > 5){
 
 cep.value =
 valor.substring(0,5)
@@ -334,18 +315,15 @@ valor.substring(0,5)
 +
 valor.substring(5);
 
-
 }else{
-
 
 cep.value =
 valor;
 
-
 }
 
 
-if(valor.length===8){
+if(valor.length === 8){
 
 buscarCEP(valor,bloco);
 
@@ -353,50 +331,52 @@ buscarCEP(valor,bloco);
 
 
 });
-    numero.addEventListener("input",()=>{
 
-    montarEndereco(bloco);
+
+
+numero.addEventListener("input",()=>{
+
+montarEndereco(bloco);
 
 });
+
 
 
 complemento.addEventListener("input",()=>{
 
-    montarEndereco(bloco);
+montarEndereco(bloco);
 
 });
 
 
 
-// Navegação ENTER
-
 bloco.addEventListener("keydown",(e)=>{
 
 
-    if(e.key==="Enter"){
+if(e.key==="Enter"){
 
 
-        e.preventDefault();
+e.preventDefault();
 
 
-        if(e.target===cep){
+if(e.target===cep){
 
-            numero.focus();
+numero.focus();
 
-        }
-        else if(e.target===numero){
+}
+else if(e.target===numero){
 
-            complemento.focus();
+complemento.focus();
 
-        }
-        else if(e.target===complemento){
+}
+else if(e.target===complemento){
 
-            criarLinha();
+criarLinha();
 
-        }
+}
 
 
-    }
+}
 
 
 });
@@ -406,11 +386,11 @@ bloco.addEventListener("keydown",(e)=>{
 excluir.addEventListener("click",()=>{
 
 
-    bloco.remove();
+bloco.remove();
 
-    renumerarSequencia();
+renumerarSequencia();
 
-    salvarDados();
+salvarDados();
 
 
 });
@@ -420,12 +400,12 @@ excluir.addEventListener("click",()=>{
 
 
 
-// Renumerar sequência após excluir
 
 function renumerarSequencia(){
 
 
 document.querySelectorAll(".bloco-endereco")
+
 .forEach((bloco,index)=>{
 
 
@@ -441,13 +421,12 @@ String(index+1).padStart(3,"0");
 
 
 
-// Buscar CEP ViaCEP
 
 function buscarCEP(cep,bloco){
 
 
 status.innerHTML =
-"🔎 Buscando endereço...";
+"Buscando endereço...";
 
 
 
@@ -468,9 +447,11 @@ if(dados.erro){
 
 
 status.innerHTML =
-"<span class='erro'>CEP não encontrado</span>";
+"CEP não encontrado";
+
 
 return;
+
 
 }
 
@@ -501,7 +482,7 @@ montarEndereco(bloco);
 
 
 status.innerHTML =
-"<span class='sucesso'>✔ Endereço encontrado</span>";
+"✔ Endereço encontrado";
 
 
 
@@ -515,7 +496,7 @@ salvarDados();
 
 
 status.innerHTML =
-"<span class='erro'>Erro ao consultar CEP</span>";
+"Erro ao consultar CEP";
 
 
 });
@@ -525,10 +506,9 @@ status.innerHTML =
 
 
 
-// Montar endereço
+
 
 function montarEndereco(bloco){
-
 
 
 const rua =
@@ -609,7 +589,6 @@ bloco.querySelector(".endereco").innerText =
 texto || "Aguardando CEP...";
 
 
-
 salvarDados();
 
 
@@ -617,25 +596,6 @@ salvarDados();
 
 
 
-// Adicionar nova linha
-
-btnAdicionar.addEventListener(
-
-"click",
-
-()=>{
-
-
-criarLinha();
-
-
-}
-
-);
-
-
-
-// Salvar dados
 
 function salvarDados(){
 
@@ -651,11 +611,9 @@ document.querySelectorAll(".bloco-endereco")
 
 dados.push({
 
-
 sequencia:
 
 bloco.querySelector(".sequencia").value,
-
 
 
 cep:
@@ -663,11 +621,9 @@ cep:
 bloco.querySelector(".cep").value,
 
 
-
 numero:
 
 bloco.querySelector(".numero").value,
-
 
 
 complemento:
@@ -675,11 +631,9 @@ complemento:
 bloco.querySelector(".complemento").value,
 
 
-
 rua:
 
 bloco.dataset.rua || "",
-
 
 
 bairro:
@@ -687,11 +641,9 @@ bairro:
 bloco.dataset.bairro || "",
 
 
-
 cidade:
 
 bloco.dataset.cidade || "",
-
 
 
 uf:
@@ -716,7 +668,158 @@ JSON.stringify(dados)
 
 
 }
+    // Exportar CSV para Circuit
 
+btnExportar.addEventListener(
+"click",
+()=>{
+
+
+let csv =
+
+"Sequencia;Destination Address;Bairro;City;Zipcode/Postal code\n";
+
+
+
+document.querySelectorAll(".bloco-endereco")
+
+.forEach(bloco=>{
+
+
+const sequencia =
+
+bloco.querySelector(".sequencia")
+.value.trim();
+
+
+
+const endereco =
+
+bloco.querySelector(".endereco")
+.innerText.trim();
+
+
+
+const bairro =
+
+bloco.dataset.bairro || "";
+
+
+
+const cidade =
+
+bloco.dataset.cidade || "";
+
+
+
+const cep =
+
+bloco.querySelector(".cep")
+.value.trim();
+
+
+
+if(endereco && 
+!endereco.includes("Aguardando")){
+
+
+csv +=
+
+sequencia.replace(/;/g," ")
+
++
+
+";"
+
++
+
+endereco.replace(/;/g," ")
+
++
+
+";"
+
++
+
+bairro.replace(/;/g," ")
+
++
+
+";"
+
++
+
+cidade.replace(/;/g," ")
+
++
+
+";"
+
++
+
+cep.replace(/;/g," ")
+
++
+
+"\n";
+
+
+}
+
+
+
+});
+
+
+
+// Gerar arquivo sem BOM para evitar ï»¿
+
+const blob =
+
+new Blob(
+
+[
+csv
+],
+
+{
+type:
+"text/csv;charset=utf-8;"
+}
+
+);
+
+
+
+const link =
+
+document.createElement("a");
+
+
+link.href =
+
+URL.createObjectURL(blob);
+
+
+
+link.download =
+
+"rotas_circuit.csv";
+
+
+
+link.click();
+
+
+
+});
+
+
+
+
+// Iniciar sistema
+
+criarLinha();
 
 
 // Carregar dados salvos
@@ -809,172 +912,18 @@ montarEndereco(bloco);
 
 
 }
-    // Exportar CSV para Circuit
 
-btnExportar.addEventListener(
+
+
+btnAdicionar.addEventListener(
 "click",
 ()=>{
 
-
-let csv =
-
-"Sequência;Destination Address;Bairro;City;Zipcode/Postal code\n";
-
-
-
-document.querySelectorAll(".bloco-endereco")
-
-.forEach(bloco=>{
-
-
-const sequencia =
-
-bloco.querySelector(".sequencia")
-.value.trim();
-
-
-
-const endereco =
-
-bloco.querySelector(".endereco")
-.innerText.trim();
-
-
-
-const bairro =
-
-bloco.dataset.bairro || "";
-
-
-
-const cidade =
-
-bloco.dataset.cidade || "";
-
-
-
-const cep =
-
-bloco.querySelector(".cep")
-.value.trim();
-
-
-
-if(endereco &&
-
-!endereco.includes("Aguardando")){
-
-
-
-csv +=
-
-sequencia.replace(/;/g," ")
-
-+
-
-";"
-
-+
-
-endereco.replace(/;/g," ")
-
-+
-
-";"
-
-+
-
-bairro.replace(/;/g," ")
-
-+
-
-";"
-
-+
-
-cidade.replace(/;/g," ")
-
-+
-
-";"
-
-+
-
-cep.replace(/;/g," ")
-
-+
-
-"\n";
-
-
-
-}
-
-
-
-});
-
-
-
-// Corrigir acentos no Excel
-
-const blob =
-
-new Blob(
-
-[
-
-"\ufeff",
-
-csv
-
-],
-
-{
-
-type:
-
-"text/csv;charset=utf-8;"
-
-}
-
-);
-
-
-
-const link =
-
-document.createElement("a");
-
-
-
-link.href =
-
-URL.createObjectURL(blob);
-
-
-
-link.download =
-
-"rotas_circuit.csv";
-
-
-
-link.click();
-
-
-
-});
-
-
-
-// Criar primeira linha
-
 criarLinha();
 
+});
 
 
-// Carregar dados salvos ao abrir
 
 carregarDados();
 
