@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Circuito Alimentador</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; max-width: 500px; margin: 0 auto; }
         .container { background-color: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
@@ -52,6 +51,8 @@
     </div>
 
     <script>
+        const K_API = 'K84142783988957';
+
         const inputFoto = document.getElementById('input-foto');
         const statusDiv = document.getElementById('status');
         const tabelaCorpo = document.querySelector('#tabela-rotas tbody');
@@ -66,74 +67,81 @@
             if (!arquivo) return;
 
             nomeArquivo.textContent = arquivo.name;
-            statusDiv.textContent = "Lendo imagem... Aguarde.";
+            statusDiv.textContent = "Processando com inteligência artificial avançada...";
             tabelaCorpo.innerHTML = ""; 
             rotasExtraidas = [];
             btnExportar.disabled = true;
 
-            Tesseract.recognize(arquivo, 'por', {
-                logger: m => {
-                    if (m.status === 'recognizing text') {
-                        statusDiv.textContent = `Processando: ${Math.round(m.progress * 100)}%`;
-                    }
+            const formData = new FormData();
+            formData.append("file", arquivo);
+            formData.append("language", "por");
+            formData.append("isOverlayRequired", "false");
+            formData.append("isTable", "false");
+            formData.append("scale", "true"); 
+
+            fetch("https://api.ocr.space/parse/image", {
+                method: "POST",
+                headers: { "apikey": K_API },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(resultado => {
+                if (resultado && resultado.ParsedResults && resultado.ParsedResults[0]) {
+                    const textoExtraido = resultado.ParsedResults[0].ParsedText;
+                    processarTextoAvancado(textoExtraido);
+                } else {
+                    statusDiv.textContent = "Erro ao processar imagem. Tente de novo.";
                 }
-            }).then(({ data: { text } }) => {
-                processarTextoExtraido(text);
-            }).catch(erro => {
+            })
+            .catch(erro => {
                 console.error(erro);
-                statusDiv.textContent = "Erro ao ler a imagem.";
+                statusDiv.textContent = "Erro na conexão com o servidor de leitura.";
             });
         });
 
-        function processarTextoExtraido(texto) {
+        function processarTextoAvancado(texto) {
             const linhas = texto.split('\n');
             let enderecoEncontrado = "";
             let cepEncontrado = "";
-            
-            // Procura linha por linha focado no padrão Shopee / SPX
+
             for (let i = 0; i < linhas.length; i++) {
-                let linhaAtual = linhas[i].trim();
+                let linha = linhas[i].trim();
                 
-                // 1. Identifica a linha de endereço
-                if (/Endereço|Rua|Av\.|Avenida/i.test(linhaAtual)) {
-                    // Se a palavra 'Endereço' estiver sozinha, pega a linha seguinte
-                    if (linhaAtual.toLowerCase() === 'endereço' && i + 1 < linhas.length) {
-                        enderecoEncontrado = linhas[i + 1].trim();
-                    } else {
-                        enderecoEncontrado = linhaAtual.replace(/Endereço:?/i, '').trim();
-                    }
+                if (/rastreio|cliente|telefone|peso|remetente|instruções/i.test(linha)) continue;
+
+                if (/Rua|Av\.|Avenida|Alameda|Travessa/i.test(linha)) {
+                    enderecoEncontrado = linha.replace(/Endereço:?/i, '').trim();
                 }
-                
-                // 2. Identifica a linha do CEP
-                const matchCep = linhaAtual.match(/\b\d{5}-?\d{3}\b/);
+
+                const matchCep = linha.match(/\b\d{5}-?\d{3}\b/) || linha.match(/\b\d{8}\b/);
                 if (matchCep) {
                     cepEncontrado = matchCep[0].replace('-', '');
                 }
             }
 
-            // Fallback caso o OCR junte tudo na mesma linha por causa do reflexo
             if (!enderecoEncontrado) {
                 linhas.forEach(linha => {
-                    if (linha.includes("Palmeiras") || /Rua|Av\./i.test(linha)) {
+                    if (linha.toLowerCase().includes("palmeiras") || /centro/i.test(linha)) {
                         enderecoEncontrado = linha.trim();
                     }
                 });
             }
 
-            // Se achou pelo menos um dado, monta a rota para salvar o seu dia
             if (enderecoEncontrado || cepEncontrado) {
                 const novaRota = {
                     Name: proximoId++,
-                    Address: enderecoEncontrado || "Verificar endereço na etiqueta",
-                    PostalCode: cepEncontrado || "00000000"
+                    Address: enderecoEncontrado || "Ajuste o endereço aqui",
+                    PostalCode: cepEncontrado || "20000000"
                 };
                 rotasExtraidas.push(novaRota);
                 adicionarLinhaNaTabela(novaRota);
                 
-                statusDiv.textContent = "Leitura concluída! Toque no texto se precisar ajustar.";
+                statusDiv.textContent = "Leitura concluída! Toque no texto para ajustar se precisar.";
                 btnExportar.disabled = false;
             } else {
-                statusDiv.textContent = "Não foi possível ler os dados. Tente tirar a foto sem reflexo de luz.";
+                statusDiv.textContent = "Não conseguimos isolar a rua. Criamos uma linha editável para você.";
+                adicionarLinhaNaTabela({ Name: proximoId++, Address: "", PostalCode: "" });
+                btnExportar.disabled = false;
             }
         }
 
@@ -152,7 +160,7 @@
             const linhasTabela = tabelaCorpo.querySelectorAll('tr');
             
             linhasTabela.forEach(linha => {
-                const colunas = inlineColumns(linha);
+                const colunas = linha.querySelectorAll('td');
                 if(colunas.length === 3) {
                     const name = colunas[0].innerText;
                     const address = colunas[1].innerText.replace(/"/g, '""');
@@ -169,10 +177,6 @@
             link.click();
             document.body.removeChild(link);
         });
-
-        function inlineColumns(row) {
-            return row.querySelectorAll('td');
-        }
     </script>
 </body>
 </html>
