@@ -1,201 +1,756 @@
 <!DOCTYPE html>
 <html lang="pt-BR" translate="no">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Circuito Alimentador</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 15px; max-width: 600px; margin: 0 auto; }
-        .container { background-color: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
-        h2 { color: #a855f7; margin-top: 0; }
-        #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; min-height: 20px; }
-        
-        .linha-rota { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; text-align: left; }
-        .label-grupo { display: flex; flex-direction: column; font-size: 12px; color: #a855f7; font-weight: bold; }
-        
-        input { background-color: #29292e; border: 1px solid #444; color: #ffffff; padding: 10px; border-radius: 6px; font-size: 14px; margin-top: 4px; outline: none; }
-        input:focus { border-color: #a855f7; }
-        
-        .resultado-container { background-color: #151515; border: 1px dashed #a855f7; padding: 10px; border-radius: 6px; text-align: left; margin-bottom: 20px; font-size: 13px; color: #888; }
-        .resultado-container strong { color: #ffffff; display: block; margin-top: 2px; font-size: 14px; }
-        
-        .btn { background-color: #a855f7; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-bottom: 10px; display: block; }
-        .btn-add { background-color: #202024; color: #a855f7; border: 1px solid #a855f7; font-size: 14px; padding: 10px; }
-        .btn-export { background-color: #e1e1e6; color: #121212; margin-top: 15px; }
-        
-        #lista-linhas { margin-top: 15px; }
-        .bloco-endereco { border-bottom: 1px solid #29292e; padding-bottom: 15px; margin-bottom: 15px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Circuito Alimentador</title>
+
+<style>
+
+body{
+    font-family:Arial,sans-serif;
+    background:#121212;
+    color:#e0e0e0;
+    padding:15px;
+    max-width:650px;
+    margin:auto;
+}
+
+.container{
+    background:#1e1e1e;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 4px 10px #000;
+}
+
+h2{
+    text-align:center;
+    color:#a855f7;
+}
+
+#status{
+    text-align:center;
+    color:#a855f7;
+    font-size:14px;
+    min-height:25px;
+}
+
+.bloco-endereco{
+    border-bottom:1px solid #333;
+    padding:15px 0;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+
+label{
+    color:#a855f7;
+    font-size:12px;
+    font-weight:bold;
+}
+
+input{
+    width:100%;
+    box-sizing:border-box;
+    margin-top:5px;
+    padding:10px;
+    border-radius:6px;
+    border:1px solid #444;
+    background:#29292e;
+    color:white;
+    font-size:14px;
+}
+
+input:focus{
+    border-color:#a855f7;
+    outline:none;
+}
+
+.resultado{
+    margin-top:12px;
+    padding:12px;
+    background:#151515;
+    border:1px dashed #a855f7;
+    border-radius:6px;
+    font-size:14px;
+}
+
+.endereco{
+    display:block;
+    color:white;
+    margin-top:5px;
+}
+
+.btn{
+    width:100%;
+    padding:12px;
+    margin-top:12px;
+    border:none;
+    border-radius:7px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.adicionar{
+    background:#202024;
+    color:#a855f7;
+    border:1px solid #a855f7;
+}
+
+.exportar{
+    background:#e1e1e6;
+    color:#121212;
+}
+
+.excluir{
+    background:#7f1d1d;
+    color:white;
+    margin-top:10px;
+    font-size:13px;
+}
+
+.sucesso{
+    color:#22c55e;
+}
+
+.erro{
+    color:#ef4444;
+}
+
+</style>
+
 </head>
+
+
 <body>
 
-    <div class="container">
-        <h2>Circuito Alimentador 📋</h2>
-        <div id="status">Insira os dados. Avance usando a tecla Enter/Próximo.</div>
+<div class="container">
 
-        <div id="lista-linhas">
-            <!-- Os blocos entram aqui dinamicamente -->
-        </div>
+<h2>
+Circuito Alimentador 📦
+</h2>
 
-        <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
-        <button id="btn-exportar" class="btn btn-export">Baixar CSV para o Circuit</button>
-    </div>
+<div id="status">
+Digite os dados da etiqueta
+</div>
+
+
+<div id="lista">
+
+</div>
+
+
+<button class="btn adicionar" id="adicionar">
++ Adicionar Nova Linha
+</button>
+
+
+<button class="btn exportar" id="exportar">
+Baixar CSV para Circuit
+</button>
+
+
+</div>
 
     <script>
-        const listaLinhas = document.getElementById('lista-linhas');
-        const btnAdicionar = document.getElementById('btn-adicionar');
-        const btnExportar = document.getElementById('btn-exportar');
 
-        function criarNovaLinha() {
-            const bloco = document.createElement('div');
-            bloco.className = 'bloco-endereco';
-            
-            bloco.innerHTML = `
-                <div class="linha-rota">
-                    <div class="label-grupo">
-                        Pacote / Nome
-                        <input type="text" class="campo-pacote" placeholder="Ex: Pacote 10">
-                    </div>
-                    <div class="label-grupo">
-                        CEP
-                        <input type="span" inputmode="numeric" class="campo-cep" placeholder="00000-000" maxlength="9">
-                    </div>
-                    <div class="label-grupo">
-                        Complemento
-                        <input type="text" class="campo-complemento" placeholder="Ex: casa 54">
-                    </div>
-                </div>
-                <div class="resultado-container">
-                    Endereço Completo (Circuit):
-                    <strong class="campo-endereco-completo">Aguardando CEP válido...</strong>
-                </div>
-            `;
+const lista = document.getElementById("lista");
+const btnAdicionar = document.getElementById("adicionar");
+const btnExportar = document.getElementById("exportar");
+const status = document.getElementById("status");
 
-            listaLinhas.appendChild(bloco);
 
-            const inputPacote = bloco.querySelector('.campo-pacote');
-            const inputCep = bloco.querySelector('.campo-cep');
-            const inputComplemento = bloco.querySelector('.campo-complemento');
+// Criar nova linha de entrega
+function criarLinha(){
 
-            inputPacote.focus();
+    const bloco = document.createElement("div");
+    bloco.className = "bloco-endereco";
 
-            inputCep.addEventListener('input', (e) => {
-                let v = e.target.value.replace(/\D/g, '');
-                if (v.length > 8) v = v.slice(0, 8);
-                if (v.length > 5) {
-                    e.target.value = `${v.slice(0, 5)}-${v.slice(5)}`;
-                } else {
-                    e.target.value = v;
-                }
 
-                if (v.length === 8) {
-                    buscarEnderecoAPI(v, bloco);
-                }
-            });
+    bloco.innerHTML = `
 
-            inputComplemento.addEventListener('input', () => {
-                const ruaSalva = bloco.getAttribute('data-rua-base');
-                if (ruaSalva) {
-                    montarEnderecoFinal(bloco);
-                }
-            });
+    <div class="grid">
 
-            bloco.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (e.target === inputPacote) {
-                        inputCep.focus();
-                    } else if (e.target === inputCep) {
-                        inputComplemento.focus();
-                    } else if (e.target === inputComplemento) {
-                        criarNovaLinha();
-                    }
-                }
-            });
+        <div>
+            <label>Pacote / Nome</label>
+            <input 
+            type="text" 
+            class="pacote"
+            placeholder="Ex: Pacote 01">
+        </div>
+
+
+        <div>
+            <label>CEP</label>
+            <input 
+            type="text"
+            class="cep"
+            inputmode="numeric"
+            maxlength="9"
+            placeholder="00000-000">
+        </div>
+
+
+        <div>
+            <label>Número</label>
+            <input 
+            type="text"
+            class="numero"
+            placeholder="Ex: 150">
+        </div>
+
+
+        <div>
+            <label>Complemento</label>
+            <input 
+            type="text"
+            class="complemento"
+            placeholder="Casa, bloco, apto">
+        </div>
+
+
+    </div>
+
+
+    <div class="resultado">
+
+        Endereço Circuit:
+
+        <strong class="endereco">
+        Aguardando CEP...
+        </strong>
+
+    </div>
+
+
+    <button class="btn excluir">
+    Remover linha
+    </button>
+
+
+    `;
+
+
+    lista.appendChild(bloco);
+
+
+
+    const pacote = bloco.querySelector(".pacote");
+    const cep = bloco.querySelector(".cep");
+    const numero = bloco.querySelector(".numero");
+    const complemento = bloco.querySelector(".complemento");
+    const endereco = bloco.querySelector(".endereco");
+    const excluir = bloco.querySelector(".excluir");
+
+
+
+    pacote.focus();
+
+
+
+    // Formatação automática CEP
+
+    cep.addEventListener("input",()=>{
+
+        let valor = cep.value.replace(/\D/g,"");
+
+
+        if(valor.length > 8){
+            valor = valor.substring(0,8);
         }
 
-        function buscarEnderecoAPI(cep, bloco) {
-            const status = document.getElementById('status');
-            const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
-            status.innerText = "Buscando localização da rua...";
 
-            fetch(`https://awesomeapi.com.br{cep}`)
-            .then(res => {
-                if (!res.ok) throw new Error();
-                return res.json();
-            })
-            .then(dados => {
-                if (dados && dados.address_name) {
-                    bloco.setAttribute('data-rua-base', dados.address_name);
-                    bloco.setAttribute('data-bairro', dados.district || '');
-                    bloco.setAttribute('data-cidade', dados.city || '');
-                    bloco.setAttribute('data-estado', dados.state || '');
+        if(valor.length > 5){
 
-                    montarEnderecoFinal(bloco);
-                    status.innerText = "Endereço localizado com sucesso!";
-                } else {
-                    status.innerText = "CEP não encontrado.";
-                    campoTextoCompleto.innerText = "CEP não localizado.";
-                    bloco.removeAttribute('data-rua-base');
-                }
-            })
-            .catch(() => {
-                status.innerText = "Erro de conexão ao buscar mapas.";
-                campoTextoCompleto.innerText = "Erro ao localizar.";
-            });
+            cep.value =
+            valor.substring(0,5)
+            +
+            "-"
+            +
+            valor.substring(5);
+
+        }else{
+
+            cep.value = valor;
+
         }
 
-        function montarEnderecoFinal(bloco) {
-            const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
-            const complemento = bloco.querySelector('.campo-complemento').value.trim();
-            
-            const rua = bloco.getAttribute('data-rua-base');
-            const bairro = bloco.getAttribute('data-bairro');
-            const city = bloco.getAttribute('data-cidade');
-            const uf = bloco.getAttribute('data-estado');
 
-            // Organização ideal exigida para leitura perfeita no Circuit
-            let formatado = rua;
-            if (complemento) {
-                formatado += `, ${complemento}`;
+        if(valor.length===8){
+
+            buscarCEP(valor,bloco);
+
+        }
+
+
+    });
+
+
+
+    complemento.addEventListener("input",()=>{
+
+        montarEndereco(bloco);
+
+    });
+
+
+
+    numero.addEventListener("input",()=>{
+
+        montarEndereco(bloco);
+
+    });
+
+
+
+    // Navegação usando ENTER
+
+    bloco.addEventListener("keydown",(e)=>{
+
+
+        if(e.key==="Enter"){
+
+            e.preventDefault();
+
+
+            if(e.target===pacote){
+
+                cep.focus();
+
             }
-            formatado += ` - ${bairro}, ${city} - ${uf}`;
-            
-            campoTextoCompleto.innerText = formatado;
+            else if(e.target===cep){
+
+                numero.focus();
+
+            }
+            else if(e.target===numero){
+
+                complemento.focus();
+
+            }
+            else if(e.target===complemento){
+
+                criarLinha();
+
+            }
+
+
         }
 
-        criarNovaLinha();
 
-        btnAdicionar.addEventListener('click', criarNovaLinha);
+    });
 
-        // CORREÇÃO CRÍTICA DO CSV: Adiciona colunas oficiais do Circuit e corrige acentuação distorcida
-        btnExportar.addEventListener('click', () => {
-            const blocos = document.querySelectorAll('.bloco-endereco');
-            
-            // Name e Address são as colunas padrão que o Circuit lê direto sem pedir para você mapear manualmente
-            let conteudoCsv = "Name;Address\n";
 
-            blocos.forEach(bloco => {
-                const pacote = bloco.querySelector('.campo-pacote').value.trim();
-                const endereco = bloco.querySelector('.campo-endereco-completo').innerText.trim();
 
-                if (pacote || (endereco && !endereco.includes("Aguardando"))) {
-                    // Limpa ponto e vírgula de dentro dos campos para não quebrar as colunas do CSV
-                    const pacoteLimpo = pacote.replace(/;/g, ' ');
-                    const enderecoLimpo = endereco.replace(/;/g, ' ');
-                    conteudoCsv += `${pacoteLimpo};${enderecoLimpo}\n`;
-                }
-            });
+    excluir.addEventListener("click",()=>{
 
-            // CORREÇÃO DE ACENTOS: O caractere '\ufeff' força o Excel/Sheets a ler acentos correntemente (Rua Antônio)
-            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), conteudoCsv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", "rotas_circuit.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        bloco.remove();
+
+        salvarDados();
+
+    });
+
+
+}
+
+
+
+// Buscar CEP ViaCEP
+
+function buscarCEP(cep,bloco){
+
+
+    status.innerHTML =
+    "🔎 Buscando endereço...";
+
+
+    fetch(
+    `https://viacep.com.br/ws/${cep}/json/`
+    )
+
+
+    .then(res=>res.json())
+
+
+    .then(dados=>{
+
+
+        if(dados.erro){
+
+
+            status.innerHTML =
+            "<span class='erro'>CEP não encontrado</span>";
+
+            return;
+
+        }
+
+
+
+        bloco.dataset.rua =
+        dados.logradouro || "";
+
+
+        bloco.dataset.bairro =
+        dados.bairro || "";
+
+
+        bloco.dataset.cidade =
+        dados.localidade || "";
+
+
+        bloco.dataset.uf =
+        dados.uf || "";
+
+
+
+        montarEndereco(bloco);
+
+
+
+        status.innerHTML =
+        "<span class='sucesso'>✔ Endereço encontrado</span>";
+
+
+
+        salvarDados();
+
+
+
+    })
+
+
+    .catch(()=>{
+
+
+        status.innerHTML =
+        "<span class='erro'>Erro ao consultar CEP</span>";
+
+
+    });
+
+
+
+}
+
+
+
+// Montar endereço padrão Circuit
+
+function montarEndereco(bloco){
+
+
+    const rua = bloco.dataset.rua || "";
+
+    const bairro = bloco.dataset.bairro || "";
+
+    const cidade = bloco.dataset.cidade || "";
+
+    const uf = bloco.dataset.uf || "";
+
+
+    const numero =
+    bloco.querySelector(".numero").value.trim();
+
+
+    const complemento =
+    bloco.querySelector(".complemento").value.trim();
+
+
+
+    let texto = rua;
+
+
+    if(numero){
+
+        texto += ", " + numero;
+
+    }
+
+
+    if(complemento){
+
+        texto += ", " + complemento;
+
+    }
+
+
+    if(bairro){
+
+        texto += " - " + bairro;
+
+    }
+
+
+    if(cidade){
+
+        texto += ", " + cidade;
+
+    }
+
+
+    if(uf){
+
+        texto += " - " + uf;
+
+    }
+
+
+
+    bloco.querySelector(".endereco").innerText =
+    texto || "Aguardando CEP...";
+
+
+    salvarDados();
+
+
+}
+
+
+
+// Criar primeira linha
+
+criarLinha();
+
+        
+// Salvar dados automaticamente no navegador
+
+function salvarDados(){
+
+    const dados = [];
+
+    document.querySelectorAll(".bloco-endereco")
+    .forEach(bloco=>{
+
+        dados.push({
+
+            pacote:
+            bloco.querySelector(".pacote").value,
+
+            cep:
+            bloco.querySelector(".cep").value,
+
+            numero:
+            bloco.querySelector(".numero").value,
+
+            complemento:
+            bloco.querySelector(".complemento").value,
+
+            rua:
+            bloco.dataset.rua || "",
+
+            bairro:
+            bloco.dataset.bairro || "",
+
+            cidade:
+            bloco.dataset.cidade || "",
+
+            uf:
+            bloco.dataset.uf || ""
+
         });
-    </script>
+
+
+    });
+
+
+    localStorage.setItem(
+        "rotas_circuit",
+        JSON.stringify(dados)
+    );
+
+}
+
+
+
+// Carregar dados salvos
+
+function carregarDados(){
+
+    const dados =
+    JSON.parse(
+        localStorage.getItem("rotas_circuit")
+    );
+
+
+    if(!dados || dados.length===0){
+
+        return;
+
+    }
+
+
+
+    lista.innerHTML="";
+
+
+
+    dados.forEach(item=>{
+
+
+        criarLinha();
+
+
+        const bloco =
+        lista.lastElementChild;
+
+
+        bloco.querySelector(".pacote").value =
+        item.pacote;
+
+
+        bloco.querySelector(".cep").value =
+        item.cep;
+
+
+        bloco.querySelector(".numero").value =
+        item.numero;
+
+
+        bloco.querySelector(".complemento").value =
+        item.complemento;
+
+
+
+        bloco.dataset.rua =
+        item.rua;
+
+
+        bloco.dataset.bairro =
+        item.bairro;
+
+
+        bloco.dataset.cidade =
+        item.cidade;
+
+
+        bloco.dataset.uf =
+        item.uf;
+
+
+
+        montarEndereco(bloco);
+
+
+
+    });
+
+
+}
+
+
+
+
+// Botão adicionar
+
+btnAdicionar.addEventListener(
+"click",
+()=>{
+
+    criarLinha();
+
+});
+
+
+
+
+// Exportar CSV para Circuit
+
+btnExportar.addEventListener(
+"click",
+()=>{
+
+
+    let csv =
+    "Name;Address\n";
+
+
+
+    document.querySelectorAll(".bloco-endereco")
+    .forEach(bloco=>{
+
+
+        const nome =
+        bloco.querySelector(".pacote")
+        .value.trim();
+
+
+
+        const endereco =
+        bloco.querySelector(".endereco")
+        .innerText.trim();
+
+
+
+        if(nome && endereco &&
+        !endereco.includes("Aguardando")){
+
+
+            csv +=
+            nome.replace(/;/g," ")
+            +
+            ";"
+            +
+            endereco.replace(/;/g," ")
+            +
+            "\n";
+
+
+        }
+
+
+    });
+
+
+
+    // Corrige acentos no Excel
+
+    const blob =
+    new Blob(
+    [
+        "\ufeff",
+        csv
+    ],
+    {
+        type:
+        "text/csv;charset=utf-8;"
+    });
+
+
+
+    const link =
+    document.createElement("a");
+
+
+    link.href =
+    URL.createObjectURL(blob);
+
+
+    link.download =
+    "rotas_circuit.csv";
+
+
+    link.click();
+
+
+
+});
+
+
+
+// Carrega informações ao abrir
+
+carregarDados();
+
+
+</script>
+
+
 </body>
+
 </html>
