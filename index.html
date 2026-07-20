@@ -10,14 +10,15 @@
         h2 { color: #a855f7; margin-top: 0; }
         #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; min-height: 20px; }
         
-        .linha-rota { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; text-align: left; }
-        .label-grupo { display: flex; flex-direction: column; font-size: 12px; color: #a855f7; font-weight: bold; }
+        /* Ajuste do grid para exibir os 3 campos na mesma linha de forma limpa no celular */
+        .linha-rota { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 6px; margin-bottom: 8px; text-align: left; }
+        .label-grupo { display: flex; flex-direction: column; font-size: 11px; color: #a855f7; font-weight: bold; }
         
-        input { background-color: #29292e; border: 1px solid #444; color: #ffffff; padding: 10px; border-radius: 6px; font-size: 14px; margin-top: 4px; outline: none; }
+        input { background-color: #29292e; border: 1px solid #444; color: #ffffff; padding: 10px 6px; border-radius: 6px; font-size: 13px; margin-top: 4px; outline: none; width: 100%; box-sizing: border-box; }
         input:focus { border-color: #a855f7; }
         
         .resultado-container { background-color: #151515; border: 1px dashed #a855f7; padding: 10px; border-radius: 6px; text-align: left; margin-bottom: 20px; font-size: 13px; color: #888; }
-        .resultado-container strong { color: #ffffff; display: block; margin-top: 2px; font-size: 14px; }
+        .resultado-container strong { color: #ffffff; display: block; margin-top: 2px; font-size: 14px; min-height: 20px; }
         
         .btn { background-color: #a855f7; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-bottom: 10px; display: block; }
         .btn-add { background-color: #202024; color: #a855f7; border: 1px solid #a855f7; font-size: 14px; padding: 10px; }
@@ -31,10 +32,10 @@
 
     <div class="container">
         <h2>Circuito Alimentador 📋</h2>
-        <div id="status">Insira os dados. Avance usando a tecla Enter/Próximo.</div>
+        <div id="status">Insira os dados. Avance usando a tecla Enter ou Próximo.</div>
 
         <div id="lista-linhas">
-            <!-- Os blocos entram aqui dinamicamente -->
+            <!-- As linhas de endereço entram aqui dinamicamente -->
         </div>
 
         <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
@@ -54,15 +55,15 @@
                 <div class="linha-rota">
                     <div class="label-grupo">
                         Pacote / Nome
-                        <input type="text" class="campo-pacote" placeholder="Ex: Pacote 10">
+                        <input type="text" class="campo-pacote" placeholder="Ex: 10">
                     </div>
                     <div class="label-grupo">
                         CEP
-                        <input type="span" inputmode="numeric" class="campo-cep" placeholder="00000-000" maxlength="9">
+                        <input type="tel" inputmode="numeric" class="campo-cep" placeholder="00000-000" maxlength="9">
                     </div>
                     <div class="label-grupo">
                         Complemento
-                        <input type="text" class="campo-complemento" placeholder="Ex: casa 54">
+                        <input type="text" class="campo-complemento" placeholder="Ex: 54">
                     </div>
                 </div>
                 <div class="resultado-container">
@@ -79,9 +80,11 @@
 
             inputPacote.focus();
 
+            // Formata o CEP dinamicamente e valida os 8 dígitos limpos
             inputCep.addEventListener('input', (e) => {
                 let v = e.target.value.replace(/\D/g, '');
                 if (v.length > 8) v = v.slice(0, 8);
+                
                 if (v.length > 5) {
                     e.target.value = `${v.slice(0, 5)}-${v.slice(5)}`;
                 } else {
@@ -89,17 +92,18 @@
                 }
 
                 if (v.length === 8) {
-                    buscarEnderecoAPI(v, bloco);
+                    buscarEnderecoViaCEP(v, bloco);
                 }
             });
 
+            // Sincroniza em tempo real se o digitador mudar ou colocar o número da casa
             inputComplemento.addEventListener('input', () => {
-                const ruaSalva = bloco.getAttribute('data-rua-base');
-                if (ruaSalva) {
+                if (bloco.getAttribute('data-rua-base')) {
                     montarEnderecoFinal(bloco);
                 }
             });
 
+            // Mapeamento idêntico ao TAB do computador para o celular
             bloco.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -114,22 +118,20 @@
             });
         }
 
-        function buscarEnderecoAPI(cep, bloco) {
+        // CORREÇÃO: Utilizando endpoint HTTPS estável do ViaCEP para carregar no mobile sem bloqueios
+        function buscarEnderecoViaCEP(cep, bloco) {
             const status = document.getElementById('status');
             const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
             status.innerText = "Buscando localização da rua...";
 
-            fetch(`https://awesomeapi.com.br{cep}`)
-            .then(res => {
-                if (!res.ok) throw new Error();
-                return res.json();
-            })
+            fetch(`https://viacep.com.br{cep}/json/`)
+            .then(res => res.json())
             .then(dados => {
-                if (dados && dados.address_name) {
-                    bloco.setAttribute('data-rua-base', dados.address_name);
-                    bloco.setAttribute('data-bairro', dados.district || '');
-                    bloco.setAttribute('data-cidade', dados.city || '');
-                    bloco.setAttribute('data-estado', dados.state || '');
+                if (dados && !dados.erro) {
+                    bloco.setAttribute('data-rua-base', dados.logradouro || '');
+                    bloco.setAttribute('data-bairro', dados.bairro || '');
+                    bloco.setAttribute('data-cidade', dados.localidade || '');
+                    bloco.setAttribute('data-estado', dados.uf || '');
 
                     montarEnderecoFinal(bloco);
                     status.innerText = "Endereço localizado com sucesso!";
@@ -145,6 +147,7 @@
             });
         }
 
+        // Monta o endereço final concatenando rua, número do complemento, bairro, cidade e estado
         function montarEnderecoFinal(bloco) {
             const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
             const complemento = bloco.querySelector('.campo-complemento').value.trim();
@@ -154,25 +157,25 @@
             const city = bloco.getAttribute('data-cidade');
             const uf = bloco.getAttribute('data-estado');
 
-            // Organização ideal exigida para leitura perfeita no Circuit
             let formatado = rua;
             if (complemento) {
                 formatado += `, ${complemento}`;
             }
-            formatado += ` - ${bairro}, ${city} - ${uf}`;
+            if (bairro) formatado += ` - ${bairro}`;
+            if (city) formatado += `, ${city}`;
+            if (uf) formatado += ` - ${uf}`;
             
             campoTextoCompleto.innerText = formatado;
         }
 
+        // Inicializa o app criando o primeiro bloco
         criarNovaLinha();
 
         btnAdicionar.addEventListener('click', criarNovaLinha);
 
-        // CORREÇÃO CRÍTICA DO CSV: Adiciona colunas oficiais do Circuit e corrige acentuação distorcida
+        // Exportação limpa com tratamento de acentos para o Excel e Circuit
         btnExportar.addEventListener('click', () => {
             const blocos = document.querySelectorAll('.bloco-endereco');
-            
-            // Name e Address são as colunas padrão que o Circuit lê direto sem pedir para você mapear manualmente
             let conteudoCsv = "Name;Address\n";
 
             blocos.forEach(bloco => {
@@ -180,14 +183,12 @@
                 const endereco = bloco.querySelector('.campo-endereco-completo').innerText.trim();
 
                 if (pacote || (endereco && !endereco.includes("Aguardando"))) {
-                    // Limpa ponto e vírgula de dentro dos campos para não quebrar as colunas do CSV
                     const pacoteLimpo = pacote.replace(/;/g, ' ');
                     const enderecoLimpo = endereco.replace(/;/g, ' ');
                     conteudoCsv += `${pacoteLimpo};${enderecoLimpo}\n`;
                 }
             });
 
-            // CORREÇÃO DE ACENTOS: O caractere '\ufeff' força o Excel/Sheets a ler acentos correntemente (Rua Antônio)
             const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), conteudoCsv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
