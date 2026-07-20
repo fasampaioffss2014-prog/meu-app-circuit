@@ -10,7 +10,6 @@
         h2 { color: #a855f7; margin-top: 0; }
         #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; }
         .btn { background-color: #a855f7; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-bottom: 10px; display: block; }
-        .btn-add { background-color: #241935; color: #a855f7; border: 1px dashed #a855f7; margin-top: 15px; }
         .btn-export { background-color: #e1e1e6; color: #121212; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #1e1e1e; }
         th, td { border: 1px solid #29292e; padding: 8px; text-align: left; font-size: 13px; }
@@ -18,7 +17,7 @@
         td[contenteditable="true"] { background-color: #29292e; border: 1px solid #a855f7; color: #ffffff; min-width: 50px; }
         .bloqueado { background-color: #151515; color: #888; cursor: not-allowed; }
         .map-container { margin-top: 25px; border-radius: 8px; overflow: hidden; border: 2px solid #29292e; background-color: #202024; display: none; }
-        iframe { width: 100%; height: 250px; border: 0; display: block; }
+        iframe { width: 100%; height: 350px; border: 0; display: block; }
     </style>
 </head>
 <body>
@@ -46,10 +45,9 @@
             </tbody>
         </table>
 
-        <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
         <button id="btn-exportar" class="btn btn-export">Baixar CSV para o Circuit</button>
 
-        <!-- Área do Mapa -->
+        <!-- Área do Mapa Multi-Pontos -->
         <div class="map-container" id="container-mapa">
             <iframe id="mapa-google" src=""></iframe>
         </div>
@@ -57,10 +55,45 @@
 
     <script>
         const tabelaCorpo = document.querySelector('#tabela-rotas tbody');
-        const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
         const containerMapa = document.getElementById('container-mapa');
         const mapaGoogle = document.getElementById('mapa-google');
+
+        // Atualiza o mapa combinando todos os endereços válidos da tabela
+        function atualizarMapaGeral() {
+            const linhas = tabelaCorpo.querySelectorAll('tr');
+            let listaEnderecos = [];
+
+            linhas.forEach(linha => {
+                const celulaEndereco = linha.querySelector('.campo-endereco-completo');
+                const enderecoTexto = celulaEndereco ? celulaEndereco.innerText.trim() : '';
+                
+                if (enderecoTexto) {
+                    listaEnderecos.push(encodeURIComponent(enderecoTexto));
+                }
+            });
+
+            if (listaEnderecos.length > 0) {
+                // Se houver apenas 1 ponto, mostra o marcador simples
+                if (listaEnderecos.length === 1) {
+                    mapaGoogle.src = `https://google.com{listaEnderecos[0]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+                } else {
+                    // Se houver mais de 1 ponto, monta o fluxo de rota (Origem -> Destino -> Waypoints)
+                    const origem = listaEnderecos[0];
+                    const destino = listaEnderecos[listaEnderecos.length - 1];
+                    const intermediarios = listaEnderecos.slice(1, -1).join('|');
+
+                    let urlMapa = `https://google.com{origem}&daddr=${destino}`;
+                    if (intermediarios) {
+                        urlMapa += `+to:${intermediarios}`;
+                    }
+                    urlMapa += `&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+                    
+                    mapaGoogle.src = urlMapa;
+                }
+                containerMapa.style.display = 'block';
+            }
+        }
 
         // Busca o CEP e salva a rua base na tabela
         function buscarCep(cep, linha) {
@@ -71,20 +104,18 @@
             if (cepLimpo.length === 8 && /^\d+$/.test(cepLimpo)) {
                 statusDivText("Buscando CEP...");
                 
-                fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`)
+                fetch(`https://viacep.com.br{cepLimpo}/json/`)
                 .then(res => res.json())
                 .then(dados => {
                     if(!dados.erro) {
                         const ruaBase = `${dados.logradouro}, ${dados.bairro} - ${dados.localidade}`;
                         celulaEndereco.setAttribute('data-rua', ruaBase);
                         
-                        // Junta a rua com o complemento atual (se houver)
                         celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
+                        statusDivText("Endereço adicionado ao circuito!");
                         
-                        // Atualiza o mapa
-                        mapaGoogle.src = `https://maps.google.com/maps?q=${cepLimpo}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
-                        containerMapa.style.display = 'block';
-                        statusDivText("Endereço atualizado!");
+                        // Atualiza os múltiplos marcadores no mapa
+                        atualizarMapaGeral();
                     } else {
                         statusDivText("CEP não encontrado.");
                     }
@@ -114,11 +145,12 @@
                 
                 if (ruaBase) {
                     celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
+                    atualizarMapaGeral();
                 }
             }
         });
 
-        // Função isolada para criar uma nova linha
+        // Cria nova linha dinamicamente ao dar Enter no último campo
         function adicionarNovaLinha() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -131,34 +163,26 @@
             return tr;
         }
 
-        // Botão Adicionar Linha manual
-        btnAdicionar.addEventListener('click', adicionarNovaLinha);
-
         // Controla o fluxo de teclas (Enter para mudar de caixa)
         tabelaCorpo.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Impede a quebra de linha dentro da célula
+                e.preventDefault(); 
                 
                 const celulaAtual = e.target;
                 const linhaAtual = celulaAtual.parentElement;
                 
-                // Pega todas as células editáveis da linha atual
                 const celulasEditaveis = Array.from(linhaAtual.querySelectorAll('td[contenteditable="true"]'));
                 const indexAtual = celulasEditaveis.indexOf(celulaAtual);
 
-                // Se houver uma próxima célula editável na mesma linha, pula para ela
                 if (indexAtual !== -1 && indexAtual < celulasEditaveis.length - 1) {
                     celulasEditaveis[indexAtual + 1].focus();
                 } else if (celulaAtual.classList.contains('campo-complemento')) {
-                    // Se estiver no complemento e der Enter, verifica se há uma próxima linha
                     let proximaLinha = linhaAtual.nextElementSibling;
                     
-                    // Se não houver próxima linha, cria uma nova dinamicamente
                     if (!proximaLinha) {
                         proximaLinha = adicionarNovaLinha();
                     }
                     
-                    // Foca na primeira célula (Pacote) da próxima linha
                     const primeiroInputProximaLinha = proximaLinha.querySelector('td[contenteditable="true"]');
                     if (primeiroInputProximaLinha) {
                         primeiroInputProximaLinha.focus();
@@ -174,7 +198,7 @@
             let temDados = false;
             
             linhasTabela.forEach(linha => {
-                const colunas = inline_columns(linha);
+                const colunas = linha.querySelectorAll('td');
                 if(colunas.length === 4) {
                     const name = colunas[0].innerText.trim();
                     const postalCode = colunas[1].innerText.trim().replace('-', '');
@@ -183,27 +207,4 @@
                     if (name || address || postalCode) {
                         csvContent += `"${name}","${address}","${postalCode}"\n`;
                         temDados = true;
-                    }
-                }
-            });
-
-            if (!temDados) {
-                alert("Insira dados antes de baixar o arquivo.");
-                return;
-            }
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "rotas_circuit.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-
-        function inline_columns(row) {
-            return row.querySelectorAll('td');
-        }
-    </script>
-</body>
-</html>
+                        
