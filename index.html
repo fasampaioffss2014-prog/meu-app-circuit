@@ -10,7 +10,6 @@
         h2 { color: #a855f7; margin-top: 0; }
         #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; min-height: 20px; }
         
-        /* Ajuste do grid para exibir os 3 campos na mesma linha de forma limpa no celular */
         .linha-rota { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 6px; margin-bottom: 8px; text-align: left; }
         .label-grupo { display: flex; flex-direction: column; font-size: 11px; color: #a855f7; font-weight: bold; }
         
@@ -26,16 +25,23 @@
         
         #lista-linhas { margin-top: 15px; }
         .bloco-endereco { border-bottom: 1px solid #29292e; padding-bottom: 15px; margin-bottom: 15px; }
+        
+        /* Ajuste visual para a caixinha de sugestões do Google Maps se adequar ao modo escuro */
+        .pac-container { background-color: #29292e; border: 1px solid #444; font-family: Arial; }
+        .pac-item { color: #fff; border-top: 1px solid #444; }
+        .pac-item-query { color: #a855f7; }
     </style>
+    <!-- Script oficial do Google Maps para carregar a inteligência de lugares e rotas -->
+    <script src="https://googleapis.com"></script>
 </head>
 <body>
 
     <div class="container">
         <h2>Circuito Alimentador 📋</h2>
-        <div id="status">Insira os dados. Avance usando a tecla Enter ou Próximo.</div>
+        <div id="status">Insira os dados. Escolha a sugestão do Google Maps ao digitar o CEP.</div>
 
         <div id="lista-linhas">
-            <!-- As linhas de endereço entram aqui dinamicamente -->
+            <!-- Gerado dinamicamente -->
         </div>
 
         <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
@@ -58,8 +64,8 @@
                         <input type="text" class="campo-pacote" placeholder="Ex: 10">
                     </div>
                     <div class="label-grupo">
-                        CEP
-                        <input type="tel" inputmode="numeric" class="campo-cep" placeholder="00000-000" maxlength="9">
+                        CEP ou Rua
+                        <input type="text" class="campo-cep" placeholder="Digite o CEP ou Rua">
                     </div>
                     <div class="label-grupo">
                         Complemento
@@ -68,7 +74,7 @@
                 </div>
                 <div class="resultado-container">
                     Endereço Completo (Circuit):
-                    <strong class="campo-endereco-completo">Aguardando CEP válido...</strong>
+                    <strong class="campo-endereco-completo">Aguardando busca do Google Maps...</strong>
                 </div>
             `;
 
@@ -80,30 +86,47 @@
 
             inputPacote.focus();
 
-            // Formata o CEP dinamicamente e valida os 8 dígitos limpos
-            inputCep.addEventListener('input', (e) => {
-                let v = e.target.value.replace(/\D/g, '');
-                if (v.length > 8) v = v.slice(0, 8);
-                
-                if (v.length > 5) {
-                    e.target.value = `${v.slice(0, 5)}-${v.slice(5)}`;
-                } else {
-                    e.target.value = v;
-                }
-
-                if (v.length === 8) {
-                    buscarEnderecoViaCEP(v, bloco);
-                }
+            // INTEGRAR GOOGLE MAPS AUTOCOMPLETE: Transforma a caixa do CEP em busca inteligente
+            const autocomplete = new google.maps.places.Autocomplete(inputCep, {
+                componentRestrictions: { country: "br" },
+                fields: ["address_components", "formatted_address"]
             });
 
-            // Sincroniza em tempo real se o digitador mudar ou colocar o número da casa
+            // Escuta quando o usuário escolhe a sugestão oficial do Google Maps
+            autocomplete.addListener("place_changed", () => {
+                const place = autocomplete.getPlace();
+                if (!place.address_components) return;
+
+                let rua = '', bairro = '', cidade = '', uf = '';
+
+                // Extrai as informações de dentro do mapa do Google
+                place.address_components.forEach(componente => {
+                    const tipos = componente.types;
+                    if (tipos.includes("route")) rua = componente.long_name;
+                    if (tipos.includes("sublocality") || tipos.includes("neighborhood")) bairro = componente.long_name;
+                    if (tipos.includes("administrative_area_level_2")) cidade = componente.long_name;
+                    if (tipos.includes("administrative_area_level_1")) uf = componente.short_name;
+                });
+
+                // Se o Google achar a região mas não a rua exata pelo CEP, pega a rua digitada
+                if (!rua) rua = inputCep.value.split(',')[0];
+
+                bloco.setAttribute('data-rua-base', rua);
+                bloco.setAttribute('data-bairro', bairro);
+                bloco.setAttribute('data-cidade', cidade);
+                bloco.setAttribute('data-estado', uf);
+
+                montarEnderecoFinal(bloco);
+                document.getElementById('status').innerText = "Endereço verificado pelo Google!";
+            });
+
             inputComplemento.addEventListener('input', () => {
                 if (bloco.getAttribute('data-rua-base')) {
                     montarEnderecoFinal(bloco);
                 }
             });
 
-            // Mapeamento idêntico ao TAB do computador para o celular
+            // Comportamento Enter = Tab
             bloco.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -118,36 +141,6 @@
             });
         }
 
-        // CORREÇÃO: Utilizando endpoint HTTPS estável do ViaCEP para carregar no mobile sem bloqueios
-        function buscarEnderecoViaCEP(cep, bloco) {
-            const status = document.getElementById('status');
-            const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
-            status.innerText = "Buscando localização da rua...";
-
-            fetch(`https://viacep.com.br{cep}/json/`)
-            .then(res => res.json())
-            .then(dados => {
-                if (dados && !dados.erro) {
-                    bloco.setAttribute('data-rua-base', dados.logradouro || '');
-                    bloco.setAttribute('data-bairro', dados.bairro || '');
-                    bloco.setAttribute('data-cidade', dados.localidade || '');
-                    bloco.setAttribute('data-estado', dados.uf || '');
-
-                    montarEnderecoFinal(bloco);
-                    status.innerText = "Endereço localizado com sucesso!";
-                } else {
-                    status.innerText = "CEP não encontrado.";
-                    campoTextoCompleto.innerText = "CEP não localizado.";
-                    bloco.removeAttribute('data-rua-base');
-                }
-            })
-            .catch(() => {
-                status.innerText = "Erro de conexão ao buscar mapas.";
-                campoTextoCompleto.innerText = "Erro ao localizar.";
-            });
-        }
-
-        // Monta o endereço final concatenando rua, número do complemento, bairro, cidade e estado
         function montarEnderecoFinal(bloco) {
             const campoTextoCompleto = bloco.querySelector('.campo-endereco-completo');
             const complemento = bloco.querySelector('.campo-complemento').value.trim();
@@ -158,9 +151,7 @@
             const uf = bloco.getAttribute('data-estado');
 
             let formatado = rua;
-            if (complemento) {
-                formatado += `, ${complemento}`;
-            }
+            if (complemento) formatado += `, ${complemento}`;
             if (bairro) formatado += ` - ${bairro}`;
             if (city) formatado += `, ${city}`;
             if (uf) formatado += ` - ${uf}`;
@@ -168,12 +159,9 @@
             campoTextoCompleto.innerText = formatado;
         }
 
-        // Inicializa o app criando o primeiro bloco
         criarNovaLinha();
-
         btnAdicionar.addEventListener('click', criarNovaLinha);
 
-        // Exportação limpa com tratamento de acentos para o Excel e Circuit
         btnExportar.addEventListener('click', () => {
             const blocos = document.querySelectorAll('.bloco-endereco');
             let conteudoCsv = "Name;Address\n";
