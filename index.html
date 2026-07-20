@@ -1,42 +1,178 @@
-function processarTextoExtraido(texto) {
-    const linhas = texto.split('\n');
-    const padraoCep = /\b\d{5}-?\d{3}\b/;;
-    let contador = proximoId;
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuito Alimentador</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; max-width: 500px; margin: 0 auto; }
+        .container { background-color: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
+        h2 { color: #a855f7; margin-top: 0; }
+        .box-upload { border: 2px dashed #a855f7; padding: 20px; border-radius: 8px; margin: 20px 0; background-color: #241935; cursor: pointer; }
+        #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; }
+        .btn { background-color: #a855f7; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-bottom: 10px; display: block; }
+        .btn-export { background-color: #e1e1e6; color: #121212; }
+        .btn:disabled { background-color: #4c286a; color: #7a7a7a; cursor: not-allowed; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #1e1e1e; }
+        th, td { border: 1px solid #29292e; padding: 10px; text-align: left; font-size: 14px; }
+        th { background-color: #202024; color: #a855f7; }
+        td[contenteditable="true"] { background-color: #29292e; border-radius: 4px; color: #ffffff; }
+        #nome-arquivo { font-size: 12px; color: #aaa; margin-top: 5px; }
+    </style>
+</head>
+<body>
 
-    linhas.forEach((linha, index) => {
-        linha = linha.trim();
-        if (!linha) return;
+    <div class="container">
+        <h2>Circuito Alimentador 📸</h2>
+        
+        <div class="box-upload" onclick="document.getElementById('input-foto').click()">
+            <input type="file" id="input-foto" accept="image/*" style="display: none;">
+            <span style="font-size: 30px;">📷</span>
+            <p style="margin: 5px 0 0 0; font-weight: bold;">Tirar Foto / Carregar Lista</p>
+            <p id="nome-arquivo">Nenhum arquivo selecionado</p>
+        </div>
 
-        // Se a linha contiver um CEP ou a linha anterior/posterior indicar endereço
-        const matchCep = inlineMatch(linha, padraoCep) || linha.includes("20000"); // detecta CEPs comuns mesmo sem traço
-        const ehLinhaDeRua = /rua|av\.|avenida|alameda|travessa|pça|praça/i.test(linha);
+        <div id="status">Aguardando imagem para leitura...</div>
 
-        if (ehLinhaDeRua || matchCep) {
-            // Se achou uma rua mas o CEP está na linha de baixo, tenta juntar
-            let enderecoCompleto = linha;
-            let cepDetectado = "20000000"; // Padrão caso falhe
+        <table id="tabela-rotas">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Postal Code</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
 
-            const mCep = inlineMatch(linha, /\b\d{5}-?\d{3}\b/);
-            if (mCep) {
-                cepDetectado = mCep[0].replace('-', '');
-                enderecoCompleto = linha.replace(mCep[0], '').trim();
+        <br>
+        <button id="btn-exportar" class="btn btn-export" disabled>Baixar CSV para o Circuit</button>
+    </div>
+
+    <script>
+        const inputFoto = document.getElementById('input-foto');
+        const statusDiv = document.getElementById('status');
+        const tabelaCorpo = document.querySelector('#tabela-rotas tbody');
+        const btnExportar = document.getElementById('btn-exportar');
+        const nomeArquivo = document.getElementById('nome-arquivo');
+
+        let rotasExtraidas = [];
+        let proximoId = 4; 
+
+        inputFoto.addEventListener('change', function(e) {
+            const arquivo = e.target.files[0];
+            if (!arquivo) return;
+
+            nomeArquivo.textContent = arquivo.name;
+            statusDiv.textContent = "Lendo imagem... Aguarde.";
+            tabelaCorpo.innerHTML = ""; 
+            rotasExtraidas = [];
+            btnExportar.disabled = true;
+
+            Tesseract.recognize(arquivo, 'por', {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        statusDiv.textContent = `Processando: ${Math.round(m.progress * 100)}%`;
+                    }
+                }
+            }).then(({ data: { text } }) => {
+                processarTextoExtraido(text);
+            }).catch(erro => {
+                console.error(erro);
+                statusDiv.textContent = "Erro ao ler a imagem.";
+            });
+        });
+
+        function processarTextoExtraido(texto) {
+            const linhas = texto.split('\n');
+            let enderecoEncontrado = "";
+            let cepEncontrado = "";
+            
+            // Procura linha por linha focado no padrão Shopee / SPX
+            for (let i = 0; i < linhas.length; i++) {
+                let linhaAtual = linhas[i].trim();
+                
+                // 1. Identifica a linha de endereço
+                if (/Endereço|Rua|Av\.|Avenida/i.test(linhaAtual)) {
+                    // Se a palavra 'Endereço' estiver sozinha, pega a linha seguinte
+                    if (linhaAtual.toLowerCase() === 'endereço' && i + 1 < linhas.length) {
+                        enderecoEncontrado = linhas[i + 1].trim();
+                    } else {
+                        enderecoEncontrado = linhaAtual.replace(/Endereço:?/i, '').trim();
+                    }
+                }
+                
+                // 2. Identifica a linha do CEP
+                const matchCep = linhaAtual.match(/\b\d{5}-?\d{3}\b/);
+                if (matchCep) {
+                    cepEncontrado = matchCep[0].replace('-', '');
+                }
             }
 
-            // Limpa caracteres estranhos que o OCR gera no reflexo
-            enderecoCompleto = enderecoCompleto.replace(/^[,.\s\-|]+|[,.\s\-|]+$/g, '').replace(/[\u00C0-\u00FF]/g, (c) => c).trim();
+            // Fallback caso o OCR junte tudo na mesma linha por causa do reflexo
+            if (!enderecoEncontrado) {
+                linhas.forEach(linha => {
+                    if (linha.includes("Palmeiras") || /Rua|Av\./i.test(linha)) {
+                        enderecoEncontrado = linha.trim();
+                    }
+                });
+            }
 
-            if (enderecoCompleto.length > 5 && !enderecoCompleto.toLowerCase().includes("remetente")) {
-                const novaRota = { Name: contador++, Address: enderecoCompleto, PostalCode: cepDetectado };
+            // Se achou pelo menos um dado, monta a rota para salvar o seu dia
+            if (enderecoEncontrado || cepEncontrado) {
+                const novaRota = {
+                    Name: proximoId++,
+                    Address: enderecoEncontrado || "Verificar endereço na etiqueta",
+                    PostalCode: cepEncontrado || "00000000"
+                };
                 rotasExtraidas.push(novaRota);
                 adicionarLinhaNaTabela(novaRota);
+                
+                statusDiv.textContent = "Leitura concluída! Toque no texto se precisar ajustar.";
+                btnExportar.disabled = false;
+            } else {
+                statusDiv.textContent = "Não foi possível ler os dados. Tente tirar a foto sem reflexo de luz.";
             }
         }
-    });
 
-    if (rotasExtraidas.length > 0) {
-        statusDiv.textContent = `${rotasExtraidas.length} rota(s) carregada(s). Corrija se necessário!`;
-        btnExportar.disabled = false;
-    } else {
-        statusDiv.textContent = "Erro na leitura. Tente usar um print direto da tela ou mude o ângulo da foto para tirar o reflexo.";
-    }
-}
+        function adicionarLinhaNaTabela(rota) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${rota.Name}</td>
+                <td contenteditable="true">${rota.Address}</td>
+                <td contenteditable="true">${rota.PostalCode}</td>
+            `;
+            tabelaCorpo.appendChild(tr);
+        }
+
+        btnExportar.addEventListener('click', () => {
+            let csvContent = "data:text/csv;charset=utf-8,Name,Address,Postal Code\n";
+            const linhasTabela = tabelaCorpo.querySelectorAll('tr');
+            
+            linhasTabela.forEach(linha => {
+                const colunas = inlineColumns(linha);
+                if(colunas.length === 3) {
+                    const name = colunas[0].innerText;
+                    const address = colunas[1].innerText.replace(/"/g, '""');
+                    const postalCode = colunas[2].innerText;
+                    csvContent += `${name},"${address}",${postalCode}\n`;
+                }
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "rotas_circuit.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        function inlineColumns(row) {
+            return row.querySelectorAll('td');
+        }
+    </script>
+</body>
+</html>
