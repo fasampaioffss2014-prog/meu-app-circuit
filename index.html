@@ -65,7 +65,7 @@
             let listaEnderecos = [];
 
             linhas.forEach(linha => {
-                const celulaEndereco = linha.querySelector('.campo-endereco-completo');
+                const celulaEndereco = inline_columns(linha)[3];
                 const enderecoTexto = celulaEndereco ? celulaEndereco.innerText.trim() : '';
                 
                 if (enderecoTexto) {
@@ -74,11 +74,9 @@
             });
 
             if (listaEnderecos.length > 0) {
-                // Se houver apenas 1 ponto, mostra o marcador simples
                 if (listaEnderecos.length === 1) {
                     mapaGoogle.src = `https://google.com{listaEnderecos[0]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
                 } else {
-                    // Se houver mais de 1 ponto, monta o fluxo de rota (Origem -> Destino -> Waypoints)
                     const origem = listaEnderecos[0];
                     const destino = listaEnderecos[listaEnderecos.length - 1];
                     const intermediarios = listaEnderecos.slice(1, -1).join('|');
@@ -98,8 +96,9 @@
         // Busca o CEP e salva a rua base na tabela
         function buscarCep(cep, linha) {
             const cepLimpo = cep.trim().replace('-', '').replace(/\s/g, '');
-            const celulaEndereco = linha.querySelector('.campo-endereco-completo');
-            const complemento = linha.querySelector('.campo-complemento').innerText.trim();
+            const colunas = inline_columns(linha);
+            const celulaEndereco = colunas[3];
+            const complemento = colunas[2].innerText.trim();
             
             if (cepLimpo.length === 8 && /^\d+$/.test(cepLimpo)) {
                 statusDivText("Buscando CEP...");
@@ -114,7 +113,6 @@
                         celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
                         statusDivText("Endereço adicionado ao circuito!");
                         
-                        // Atualiza os múltiplos marcadores no mapa
                         atualizarMapaGeral();
                     } else {
                         statusDivText("CEP não encontrado.");
@@ -133,13 +131,14 @@
         // Escuta as alterações na tabela (CEP ou Complemento)
         tabelaCorpo.addEventListener('input', (e) => {
             const linhaAtual = e.target.parentElement;
+            const colunas = inline_columns(linhaAtual);
             
             if (e.target.classList.contains('campo-cep')) {
                 buscarCep(e.target.innerText, linhaAtual);
             }
             
             if (e.target.classList.contains('campo-complemento')) {
-                const celulaEndereco = linhaAtual.querySelector('.campo-endereco-completo');
+                const celulaEndereco = colunas[3];
                 const ruaBase = celulaEndereco.getAttribute('data-rua');
                 const complemento = e.target.innerText.trim();
                 
@@ -198,7 +197,7 @@
             let temDados = false;
             
             linhasTabela.forEach(linha => {
-                const colunas = linha.querySelectorAll('td');
+                const colunas = inline_columns(linha);
                 if(colunas.length === 4) {
                     const name = colunas[0].innerText.trim();
                     const postalCode = colunas[1].innerText.trim().replace('-', '');
@@ -207,4 +206,14 @@
                     if (name || address || postalCode) {
                         csvContent += `"${name}","${address}","${postalCode}"\n`;
                         temDados = true;
-                        
+                    }
+                }
+            });
+
+            if (!temDados) {
+                alert("Insira dados antes de baixar o arquivo.");
+                return;
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            
