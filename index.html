@@ -37,7 +37,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td contenteditable="true" autofocus></td>
+                    <td contenteditable="true" class="campo-pacote" autofocus></td>
                     <td contenteditable="true" class="campo-cep"></td>
                     <td contenteditable="true" class="campo-complemento"></td>
                     <td class="campo-endereco-completo bloqueado" data-rua=""></td>
@@ -65,7 +65,7 @@
             let listaEnderecos = [];
 
             linhas.forEach(linha => {
-                const celulaEndereco = inline_columns(linha)[3];
+                const celulaEndereco = linha.querySelector('.campo-endereco-completo');
                 const enderecoTexto = celulaEndereco ? celulaEndereco.innerText.trim() : '';
                 
                 if (enderecoTexto) {
@@ -96,9 +96,8 @@
         // Busca o CEP e salva a rua base na tabela
         function buscarCep(cep, linha) {
             const cepLimpo = cep.trim().replace('-', '').replace(/\s/g, '');
-            const colunas = inline_columns(linha);
-            const celulaEndereco = colunas[3];
-            const complemento = colunas[2].innerText.trim();
+            const celulaEndereco = linha.querySelector('.campo-endereco-completo');
+            const complemento = linha.querySelector('.campo-complemento').innerText.trim();
             
             if (cepLimpo.length === 8 && /^\d+$/.test(cepLimpo)) {
                 statusDivText("Buscando CEP...");
@@ -109,10 +108,8 @@
                     if(!dados.erro) {
                         const ruaBase = `${dados.logradouro}, ${dados.bairro} - ${dados.localidade}`;
                         celulaEndereco.setAttribute('data-rua', ruaBase);
-                        
                         celulaEndereco.innerText = complemento ? `${ruaBase} (Nº ${complemento})` : ruaBase;
                         statusDivText("Endereço adicionado ao circuito!");
-                        
                         atualizarMapaGeral();
                     } else {
                         statusDivText("CEP não encontrado.");
@@ -131,14 +128,13 @@
         // Escuta as alterações na tabela (CEP ou Complemento)
         tabelaCorpo.addEventListener('input', (e) => {
             const linhaAtual = e.target.parentElement;
-            const colunas = inline_columns(linhaAtual);
             
             if (e.target.classList.contains('campo-cep')) {
                 buscarCep(e.target.innerText, linhaAtual);
             }
             
             if (e.target.classList.contains('campo-complemento')) {
-                const celulaEndereco = colunas[3];
+                const celulaEndereco = linhaAtual.querySelector('.campo-endereco-completo');
                 const ruaBase = celulaEndereco.getAttribute('data-rua');
                 const complemento = e.target.innerText.trim();
                 
@@ -149,11 +145,11 @@
             }
         });
 
-        // Cria nova linha dinamicamente ao dar Enter no último campo
+        // Cria nova linha dinamicamente
         function adicionarNovaLinha() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td contenteditable="true"></td>
+                <td contenteditable="true" class="campo-pacote"></td>
                 <td contenteditable="true" class="campo-cep"></td>
                 <td contenteditable="true" class="campo-complemento"></td>
                 <td class="campo-endereco-completo bloqueado" data-rua=""></td>
@@ -165,27 +161,25 @@
         // Controla o fluxo de teclas (Enter para mudar de caixa)
         tabelaCorpo.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault(); 
+                e.preventDefault(); // Impede a quebra de linha interna das células
                 
                 const celulaAtual = e.target;
                 const linhaAtual = celulaAtual.parentElement;
-                
-                const celulasEditaveis = Array.from(linhaAtual.querySelectorAll('td[contenteditable="true"]'));
-                const indexAtual = celulasEditaveis.indexOf(celulaAtual);
 
-                if (indexAtual !== -1 && indexAtual < celulasEditaveis.length - 1) {
-                    celulasEditaveis[indexAtual + 1].focus();
-                } else if (celulaAtual.classList.contains('campo-complemento')) {
+                if (celulaAtual.classList.contains('campo-pacote')) {
+                    linhaAtual.querySelector('.campo-cep').focus();
+                } 
+                else if (celulaAtual.classList.contains('campo-cep')) {
+                    linhaAtual.querySelector('.campo-complemento').focus();
+                } 
+                else if (celulaAtual.classList.contains('campo-complemento')) {
                     let proximaLinha = linhaAtual.nextElementSibling;
                     
                     if (!proximaLinha) {
                         proximaLinha = adicionarNovaLinha();
                     }
                     
-                    const primeiroInputProximaLinha = proximaLinha.querySelector('td[contenteditable="true"]');
-                    if (primeiroInputProximaLinha) {
-                        primeiroInputProximaLinha.focus();
-                    }
+                    proximaLinha.querySelector('.campo-pacote').focus();
                 }
             }
         });
@@ -197,7 +191,7 @@
             let temDados = false;
             
             linhasTabela.forEach(linha => {
-                const colunas = inline_columns(linha);
+                const colunas = linha.querySelectorAll('td');
                 if(colunas.length === 4) {
                     const name = colunas[0].innerText.trim();
                     const postalCode = colunas[1].innerText.trim().replace('-', '');
@@ -216,4 +210,7 @@
             }
 
             const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "rotas_circuit.csv");
             
