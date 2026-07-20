@@ -74,9 +74,9 @@
 
             if (listaEnderecos.length > 0) {
                 if (listaEnderecos.length === 1) {
-                    mapaGoogle.src = `https://google.com{listaEnderecos[0]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+                    mapaGoogle.src = `https://google.com{listaEnderecos}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
                 } else {
-                    const origem = listaEnderecos[0];
+                    const origem = listaEnderecos;
                     const destino = listaEnderecos[listaEnderecos.length - 1];
                     const intermediarios = listaEnderecos.slice(1, -1).join('|');
 
@@ -126,7 +126,7 @@
             document.getElementById('status').innerText = txt;
         }
 
-        // Formatação simples do CEP ao perder o foco ou digitar
+        // Formatação do CEP após edição
         tabelaCorpo.addEventListener('focusout', (e) => {
             const linhaAtual = e.target.parentElement;
             if (e.target.classList.contains('campo-cep')) {
@@ -138,7 +138,7 @@
             }
         });
 
-        // Escuta digitação para atualizar dinamicamente o complemento
+        // Monitora digitação geral
         tabelaCorpo.addEventListener('input', (e) => {
             const linhaAtual = e.target.parentElement;
             
@@ -173,43 +173,43 @@
             return tr;
         }
 
-        // Manipulação unificada do Enter (independente do teclado mobile/desktop)
-        tabelaCorpo.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.keyCode === 13) {
-                e.preventDefault();
-                
-                const celulaAtual = e.target;
-                const linhaAtual = celulaAtual.parentElement;
+        // Função unificada para gerenciar a troca de focos e criação de novas linhas
+        function gerenciarNavegacaoCelas(e) {
+            const isEnter = e.key === 'Enter' || e.keyCode === 13;
+            if (!isEnter) return;
 
-                if (celulaAtual.classList.contains('campo-pacote')) {
-                    linhaAtual.querySelector('.campo-cep').focus();
-                } 
-                else if (celulaAtual.classList.contains('campo-cep')) {
-                    buscarCep(linhaAtual);
-                    linhaAtual.querySelector('.campo-complemento').focus();
-                } 
-                else if (celulaAtual.classList.contains('campo-complemento')) {
-                    const novaLinha = adicionarNovaLinha();
+            e.preventDefault();
+            const celulaAtual = e.target;
+            const linhaAtual = celulaAtual.parentElement;
+
+            if (celulaAtual.classList.contains('campo-pacote')) {
+                linhaAtual.querySelector('.campo-cep').focus();
+            } 
+            else if (celulaAtual.classList.contains('campo-cep')) {
+                buscarCep(linhaAtual);
+                linhaAtual.querySelector('.campo-complemento').focus();
+            } 
+            else if (celulaAtual.classList.contains('campo-complemento')) {
+                // Remove quebras de linha fantasmas que o navegador mobile adiciona antes de criar a linha
+                celulaAtual.innerText = celulaAtual.innerText.replace(/\n/g, '').trim();
+                
+                const novaLinha = adicionarNovaLinha();
+                
+                // Pequeno delay para garantir que a renderização da linha terminou antes de focar
+                setTimeout(() => {
                     novaLinha.querySelector('.campo-pacote').focus();
-                }
+                }, 50);
             }
-        });
+        }
+
+        // CORREÇÃO CRÍTICA MOBILE: Aplica o validador de Enter em múltiplos tipos de eventos para mitigar problemas com teclados virtuais
+        tabelaCorpo.addEventListener('keydown', gerenciarNavegacaoCelas);
+        tabelaCorpo.addEventListener('keypress', gerenciarNavegacaoCelas);
 
         btnExportar.addEventListener('click', () => {
-            const linhas = tabelaCorpo.querySelectorAll('tr');
+            const lines = tabelaCorpo.querySelectorAll('tr');
             let conteudoCsv = "Pacote;CEP;Complemento;Endereco\n";
 
-            linhas.forEach(linha => {
-                const pacote = Board = linha.querySelector('.campo-pacote').innerText.trim();
-                const cep = linha.querySelector('.campo-cep').innerText.trim();
-                const complemento = linha.querySelector('.campo-complemento').innerText.trim();
-                const endereco = linha.querySelector('.campo-endereco-completo').innerText.trim();
-
-                if (pacote || cep || endereco) {
-                    conteudoCsv += `${pacote};${cep};${complemento};${endereco}\n`;
-                }
-            });
-
-            const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-        
+            lines.forEach(linha => {
+                const pacote = linha.querySelector('.campo-pacote').innerText.trim();
+                
