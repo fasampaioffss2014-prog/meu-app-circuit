@@ -8,31 +8,21 @@
         body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; max-width: 500px; margin: 0 auto; }
         .container { background-color: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-align: center; }
         h2 { color: #a855f7; margin-top: 0; }
-        .box-upload { border: 2px dashed #a855f7; padding: 20px; border-radius: 8px; margin: 20px 0; background-color: #241935; cursor: pointer; }
         #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; }
         .btn { background-color: #a855f7; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-bottom: 10px; display: block; }
-        .btn-export { background-color: #e1e1e6; color: #121212; }
-        .btn:disabled { background-color: #4c286a; color: #7a7a7a; cursor: not-allowed; }
+        .btn-add { background-color: #241935; color: #a855f7; border: 1px dashed #a855f7; margin-top: 15px; }
+        .btn-export { background-color: #e1e1e6; color: #121212; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #1e1e1e; }
         th, td { border: 1px solid #29292e; padding: 10px; text-align: left; font-size: 14px; }
         th { background-color: #202024; color: #a855f7; }
-        td[contenteditable="true"] { background-color: #29292e; border-radius: 4px; color: #ffffff; }
-        #nome-arquivo { font-size: 12px; color: #aaa; margin-top: 5px; }
+        td[contenteditable="true"] { background-color: #29292e; border: 1px solid #a855f7; color: #ffffff; min-height: 20px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Circuito Alimentador 📸</h2>
-        
-        <div class="box-upload" onclick="document.getElementById('input-foto').click()">
-            <input type="file" id="input-foto" accept="image/*" style="display: none;">
-            <span style="font-size: 30px;">📷</span>
-            <p style="margin: 5px 0 0 0; font-weight: bold;">Tirar Foto / Carregar Lista</p>
-            <p id="nome-arquivo">Nenhum arquivo selecionado</p>
-        </div>
-
-        <div id="status">Aguardando imagem para leitura...</div>
+        <h2>Circuito Alimentador 📋</h2>
+        <div id="status">Use o Google Lens para copiar o endereço e cole nas caixas abaixo:</div>
 
         <table id="tabela-rotas">
             <thead>
@@ -43,130 +33,33 @@
                 </tr>
             </thead>
             <tbody>
+                <tr>
+                    <td>4</td>
+                    <td contenteditable="true" placeholder="Cole o endereço aqui"></td>
+                    <td contenteditable="true" placeholder="CEP"></td>
+                </tr>
             </tbody>
         </table>
 
-        <br>
-        <button id="btn-exportar" class="btn btn-export" disabled>Baixar CSV para o Circuit</button>
+        <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
+        <button id="btn-exportar" class="btn btn-export">Baixar CSV para o Circuit</button>
     </div>
 
     <script>
-        const K_API = 'K84142783988957';
-
-        const inputFoto = document.getElementById('input-foto');
-        const statusDiv = document.getElementById('status');
         const tabelaCorpo = document.querySelector('#tabela-rotas tbody');
+        const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
-        const nomeArquivo = document.getElementById('nome-arquivo');
+        let proximoId = 5;
 
-        let rotasExtraidas = [];
-        let proximoId = 4; 
-
-        inputFoto.addEventListener('change', function(e) {
-            const arquivo = e.target.files[0];
-            if (!arquivo) return;
-
-            nomeArquivo.textContent = arquivo.name;
-            statusDiv.textContent = "Processando com inteligência artificial avançada...";
-            tabelaCorpo.innerHTML = ""; 
-            rotasExtraidas = [];
-            btnExportar.disabled = true;
-
-            // Converte para Base64 para evitar bloqueios de envio do celular
-            const leitor = new FileReader();
-            leitor.onloadend = function() {
-                const base64Imagem = leitor.result;
-
-                const formData = new FormData();
-                formData.append("base64Image", base64Imagem);
-                formData.append("language", "por");
-                formData.append("scale", "true"); 
-
-                fetch("https://api.ocr.space/parse/image", {
-                    method: "POST",
-                    headers: { "apikey": K_API },
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(resultado => {
-                    if (resultado && resultado.ParsedResults && resultado.ParsedResults[0]) {
-                        const textoExtraido = resultado.ParsedResults[0].ParsedText;
-                        processarTextoAvancado(textoExtraido);
-                    } else {
-                        // Se der erro na API, cria a linha manual para você não travar o trabalho
-                        statusDiv.textContent = "Erro na resposta automática. Use a linha abaixo manualmente.";
-                        criarLinhaVaziaEMitigar();
-                    }
-                })
-                .catch(erro => {
-                    console.error(erro);
-                    statusDiv.textContent = "Erro de conexão. Criamos uma linha editável para você.";
-                    criarLinhaVaziaEMitigar();
-                });
-            };
-            leitor.readAsDataURL(arquivo);
-        });
-
-        function criarLinhaVaziaEMitigar() {
-            tabelaCorpo.innerHTML = "";
-            adicionarLinhaNaTabela({ Name: proximoId++, Address: "", PostalCode: "" });
-            btnExportar.disabled = false;
-        }
-
-        function processarTextoAvancado(texto) {
-            const linhas = texto.split('\n');
-            let enderecoEncontrado = "";
-            let cepEncontrado = "";
-
-            for (let i = 0; i < linhas.length; i++) {
-                let linha = linhas[i].trim();
-                
-                if (/rastreio|cliente|telefone|peso|remetente|instruções/i.test(linha)) continue;
-
-                if (/Rua|Av\.|Avenida|Alameda|Travessa/i.test(linha)) {
-                    enderecoEncontrado = linha.replace(/Endereço:?/i, '').trim();
-                }
-
-                const matchCep = linha.match(/\b\d{5}-?\d{3}\b/) || linha.match(/\b\d{8}\b/);
-                if (matchCep) {
-                    cepEncontrado = matchCep[0].replace('-', '');
-                }
-            }
-
-            if (!enderecoEncontrado) {
-                linhas.forEach(linha => {
-                    if (linha.toLowerCase().includes("palmeiras") || /centro/i.test(linha)) {
-                        enderecoEncontrado = line.trim();
-                    }
-                });
-            }
-
-            if (enderecoEncontrado || cepEncontrado) {
-                const novaRota = {
-                    Name: proximoId++,
-                    Address: enderecoEncontrado || "Ajuste o endereço aqui",
-                    PostalCode: cepEncontrado || "20000000"
-                };
-                rotasExtraidas.push(novaRota);
-                adicionarLinhaNaTabela(novaRota);
-                
-                statusDiv.textContent = "Leitura concluída! Ajuste se necessário.";
-                btnExportar.disabled = false;
-            } else {
-                statusDiv.textContent = "Dados não identificados automaticamente. Use a linha abaixo.";
-                criarLinhaVaziaEMitigar();
-            }
-        }
-
-        function adicionarLinhaNaTabela(rota) {
+        btnAdicionar.addEventListener('click', () => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${rota.Name}</td>
-                <td contenteditable="true">${rota.Address}</td>
-                <td contenteditable="true">${rota.PostalCode}</td>
+                <td>${proximoId++}</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
             `;
             tabelaCorpo.appendChild(tr);
-        }
+        });
 
         btnExportar.addEventListener('click', () => {
             let csvContent = "data:text/csv;charset=utf-8,Name,Address,Postal Code\n";
@@ -175,10 +68,13 @@
             linhasTabela.forEach(linha => {
                 const colunas = linha.querySelectorAll('td');
                 if(colunas.length === 3) {
-                    const name = colunas[0].innerText;
-                    const address = colunas[1].innerText.replace(/"/g, '""');
-                    const postalCode = colunas[2].innerText;
-                    csvContent += `${name},"${address}",${postalCode}\n`;
+                    const name = colunas[0].innerText.trim();
+                    const address = colunas[1].innerText.trim().replace(/"/g, '""');
+                    const postalCode = colunas[2].innerText.trim();
+                    
+                    if (address || postalCode) {
+                        csvContent += `${name},"${address}",${postalCode}\n`;
+                    }
                 }
             });
 
