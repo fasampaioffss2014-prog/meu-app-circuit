@@ -10,6 +10,8 @@
         h2 { color: #a855f7; margin-top: 0; }
         #status { color: #a855f7; font-style: italic; margin: 10px 0; font-size: 14px; }
         .btn { background-color: #a855f7; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; margin-bottom: 10px; display: block; }
+        .btn-add { background-color: #202024; color: #a855f7; border: 1px solid #a855f7; margin-top: 10px; padding: 8px; font-size: 14px; }
+        .btn-add:hover { background-color: #a855f7; color: white; }
         .btn-export { background-color: #e1e1e6; color: #121212; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #1e1e1e; }
         th, td { border: 1px solid #29292e; padding: 8px; text-align: left; font-size: 13px; }
@@ -45,6 +47,9 @@
             </tbody>
         </table>
 
+        <!-- NOVO: Botão explícito para adicionar nova linha manualmente -->
+        <button id="btn-adicionar" class="btn btn-add">+ Adicionar Nova Linha</button>
+
         <button id="btn-exportar" class="btn btn-export">Baixar CSV para o Circuit</button>
 
         <!-- Área do Mapa Multi-Pontos -->
@@ -55,6 +60,7 @@
 
     <script>
         const tabelaCorpo = document.querySelector('#tabela-rotas tbody');
+        const btnAdicionar = document.getElementById('btn-adicionar');
         const btnExportar = document.getElementById('btn-exportar');
         const containerMapa = document.getElementById('container-mapa');
         const mapaGoogle = document.getElementById('mapa-google');
@@ -74,9 +80,9 @@
 
             if (listaEnderecos.length > 0) {
                 if (listaEnderecos.length === 1) {
-                    mapaGoogle.src = `https://google.com{listaEnderecos}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+                    mapaGoogle.src = `https://google.com{listaEnderecos[0]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
                 } else {
-                    const origem = listaEnderecos;
+                    const origem = listaEnderecos[0];
                     const destino = listaEnderecos[listaEnderecos.length - 1];
                     const intermediarios = listaEnderecos.slice(1, -1).join('|');
 
@@ -92,9 +98,10 @@
             }
         }
 
+        // CORREÇÃO DA BUSCA: Filtra rigorosamente espaços e quebras de linha para garantir a execução da API
         function buscarCep(linha) {
             const celulaCep = linha.querySelector('.campo-cep');
-            const cepLimpo = celulaCep.innerText.trim().replace(/\D/g, '');
+            const cepLimpo = celulaCep.innerText.replace(/\D/g, '').trim();
             const celulaEndereco = linha.querySelector('.campo-endereco-completo');
             const complemento = linha.querySelector('.campo-complemento').innerText.trim();
             
@@ -112,7 +119,7 @@
                         atualizarMapaGeral();
                     } else {
                         statusDivText("CEP não encontrado.");
-                        celulaEndereco.innerText = "";
+                        celulaEndereco.innerText = "Não encontrado";
                         celulaEndereco.removeAttribute('data-rua');
                     }
                 })
@@ -126,11 +133,11 @@
             document.getElementById('status').innerText = txt;
         }
 
-        // Formatação do CEP após edição
+        // Executa a busca ao sair da célula ou ao completar os números
         tabelaCorpo.addEventListener('focusout', (e) => {
             const linhaAtual = e.target.parentElement;
             if (e.target.classList.contains('campo-cep')) {
-                let texto = e.target.innerText.replace(/\D/g, '');
+                let texto = e.target.innerText.replace(/\D/g, '').trim();
                 if (texto.length === 8) {
                     e.target.innerText = `${texto.slice(0, 5)}-${texto.slice(5)}`;
                 }
@@ -138,12 +145,12 @@
             }
         });
 
-        // Monitora digitação geral
+        // Gerencia mudanças dinâmicas no complemento e no CEP
         tabelaCorpo.addEventListener('input', (e) => {
             const linhaAtual = e.target.parentElement;
             
             if (e.target.classList.contains('campo-cep')) {
-                let texto = e.target.innerText.replace(/\D/g, '');
+                let texto = e.target.innerText.replace(/\D/g, '').trim();
                 if (texto.length === 8) {
                     buscarCep(linhaAtual);
                 }
@@ -173,43 +180,28 @@
             return tr;
         }
 
-        // Função unificada para gerenciar a troca de focos e criação de novas linhas
-        function gerenciarNavegacaoCelas(e) {
-            const isEnter = e.key === 'Enter' || e.keyCode === 13;
-            if (!isEnter) return;
+        // Vincula a ação do botão físico para gerar a nova linha
+        btnAdicionar.addEventListener('click', () => {
+            const novaLinha = adicionarNovaLinha();
+            novaLinha.querySelector('.campo-pacote').focus();
+        });
 
-            e.preventDefault();
-            const celulaAtual = e.target;
-            const linhaAtual = celulaAtual.parentElement;
-
-            if (celulaAtual.classList.contains('campo-pacote')) {
-                linhaAtual.querySelector('.campo-cep').focus();
-            } 
-            else if (celulaAtual.classList.contains('campo-cep')) {
-                buscarCep(linhaAtual);
-                linhaAtual.querySelector('.campo-complemento').focus();
-            } 
-            else if (celulaAtual.classList.contains('campo-complemento')) {
-                // Remove quebras de linha fantasmas que o navegador mobile adiciona antes de criar a linha
-                celulaAtual.innerText = celulaAtual.innerText.replace(/\n/g, '').trim();
+        // CORREÇÃO CRÍTICA DO ENTER/TAB: intercepta o evento e simula comportamento nativo do TAB
+        tabelaCorpo.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault(); // Impede saltos de linha internos indesejados
                 
-                const novaLinha = adicionarNovaLinha();
-                
-                // Pequeno delay para garantir que a renderização da linha terminou antes de focar
-                setTimeout(() => {
-                    novaLinha.querySelector('.campo-pacote').focus();
-                }, 50);
-            }
-        }
+                const celulaAtual = e.target;
+                const linhaAtual = celulaAtual.parentElement;
 
-        // CORREÇÃO CRÍTICA MOBILE: Aplica o validador de Enter em múltiplos tipos de eventos para mitigar problemas com teclados virtuais
-        tabelaCorpo.addEventListener('keydown', gerenciarNavegacaoCelas);
-        tabelaCorpo.addEventListener('keypress', gerenciarNavegacaoCelas);
-
-        btnExportar.addEventListener('click', () => {
-            const lines = tabelaCorpo.querySelectorAll('tr');
-            let conteudoCsv = "Pacote;CEP;Complemento;Endereco\n";
-
-            lines.forEach(linha => {
-                const pacote = linha.querySelector('.campo-pacote').innerText.trim();
-                
+                if (celulaAtual.classList.contains('campo-pacote')) {
+                    linhaAtual.querySelector('.campo-cep').focus();
+                } 
+                else if (celulaAtual.classList.contains('campo-cep')) {
+                    buscarCep(linhaAtual);
+                    linhaAtual.querySelector('.campo-complemento').focus();
+                } 
+                else if (celulaAtual.classList.contains('campo-complemento')) {
+                    // Limpa quebras de linhas geradas pelo input mobile antes de pular
+                    celulaAtual.innerText = celulaAtual.innerText.replace(/\n/g, '').trim();
+        
